@@ -18,12 +18,10 @@ func createVAO() VAO {
 	}
 }
 
-func (vao *VAO) storeFloat32Buffer(attributeIndex uint32, dataSizePerVertex int32, buffer []float32) {
-	vbo := createVBO()
+func (vao *VAO) storeVBO(attributeIndex uint32, vbo VBO) {
 	vao.bind()
-	vbo.bind()                                                                    // bind vbo that we are about to store buffer into
-	gl.BufferData(gl.ARRAY_BUFFER, len(buffer)*4, gl.Ptr(buffer), gl.STATIC_DRAW) // store data
-	gl.VertexAttribPointer(attributeIndex, dataSizePerVertex, gl.FLOAT, false, 0, nil)
+	vbo.bind()
+	gl.VertexAttribPointer(attributeIndex, vbo.singleDataSize, vbo.dataType, false, vbo.stride, nil)
 	vbo.unbind()
 	vao.unbind()
 	vao.attributes[attributeIndex] = vbo

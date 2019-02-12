@@ -3,14 +3,22 @@ package kame
 import "github.com/go-gl/gl/v4.1-core/gl"
 
 type VBO struct {
-	id uint32
+	id             uint32
+	singleDataSize int32
+	stride         int32
+	dataType       uint32
 }
 
-func createVBO() VBO {
+func createFloat32VBO(singleDataSize int32, buffer []float32) VBO {
 	var vboID uint32
 	gl.GenBuffers(1, &vboID)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboID)                                         // bind vbo that we are about to store buffer into
+	gl.BufferData(gl.ARRAY_BUFFER, len(buffer)*4, gl.Ptr(buffer), gl.STATIC_DRAW) // store data
 	return VBO{
-		id: vboID,
+		id:             vboID,
+		singleDataSize: singleDataSize,
+		stride:         singleDataSize * 4,
+		dataType:       gl.FLOAT,
 	}
 }
 

@@ -8,7 +8,8 @@ type DrawableModel struct {
 func CreateDrawableModel(window *Window, vertexPositions []float32) DrawableModel {
 	window.MakeContextCurrent()
 	vao := createVAO()
-	vao.storeFloat32Buffer(0, 3, vertexPositions)
+	vbo := createFloat32VBO(3, vertexPositions)
+	vao.storeVBO(0, vbo)
 	return DrawableModel{
 		vao:        vao,
 		vertexSize: int32(len(vertexPositions)) / 3,
