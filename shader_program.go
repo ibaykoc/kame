@@ -66,7 +66,7 @@ func loadShader(filePath string, shaderType uint32) uint32 {
 		log := strings.Repeat("\x00", int(logLength+1))
 		gl.GetShaderInfoLog(shaderID, logLength, nil, gl.Str(log))
 
-		fmt.Printf("failed to compile shader: \n%v\n%v", log, shaderSource)
+		fmt.Printf("failed to compile shader (type %d): \n%v\n%v\n", shaderType, log, shaderSource)
 	}
 	return shaderID
 }
