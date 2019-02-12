@@ -7,7 +7,6 @@ package kame
 import (
 	"time"
 
-	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
@@ -20,13 +19,14 @@ type Window struct {
 	ShouldClose          bool
 	hasClose             bool
 	OnUpdate             func(deltaTime float64) // Called every frame before draw, received delta time (1 = meets targetFps)
-	OnDraw               func()
+	OnDraw               func(drawer *Drawer)
 	OnSizeChangeCallback func(newWidth int, newHeight int)
 	lastFrameStartTime   time.Time
 	glfwWindow           *glfw.Window
+	Drawer               *Drawer
 }
 
-func newWindow(title string, width int, height int, targetFps int, glfwWindow *glfw.Window) *Window {
+func newWindow(title string, width int, height int, backgroundColor Color, targetFps int, glfwWindow *glfw.Window) *Window {
 	window := Window{
 		Title:              title,
 		width:              width,
@@ -42,10 +42,16 @@ func newWindow(title string, width int, height int, targetFps int, glfwWindow *g
 			window.OnSizeChangeCallback(width, height)
 		}
 	})
+	d, err := newDrawer(backgroundColor)
+	if err != nil {
+		panic(err)
+	}
+	window.Drawer = d
 	return &window
 }
 
 func (w *Window) Run() {
+	// Process fps and calculate deltatime
 	dt := time.Since(w.lastFrameStartTime).Seconds()
 	if desireDiff := 1.0/float64(w.targetFps) - dt; desireDiff > 0 {
 		time.Sleep(time.Duration(desireDiff * 1000000000))
@@ -53,17 +59,33 @@ func (w *Window) Run() {
 	}
 	dt *= float64(w.targetFps)
 	w.lastFrameStartTime = time.Now()
+
+	// Make context to current window
+	w.glfwWindow.MakeContextCurrent()
+
+	// Get input
 	glfw.PollEvents()
+
+	// Do update
 	if w.OnUpdate != nil {
 		w.OnUpdate(dt)
 	}
 
-	gl.Clear(gl.COLOR_BUFFER_BIT)
+	// Do draw
+	w.Drawer.clear()
 	if w.OnDraw != nil {
-		w.OnDraw()
+		w.OnDraw(w.Drawer)
 	}
+
+	// Show drawn
 	w.glfwWindow.SwapBuffers()
+
+	// Update window should close stat
 	w.ShouldClose = w.glfwWindow.ShouldClose()
+}
+
+func (w *Window) MakeContextCurrent() {
+	w.glfwWindow.MakeContextCurrent()
 }
 
 func (w *Window) SetOnSizeChangeCallback(callback glfw.SizeCallback) {
@@ -89,5 +111,6 @@ func (w *Window) HasClose() bool {
 
 func (w *Window) Close() {
 	w.hasClose = true
+	w.Drawer.dispose()
 	w.glfwWindow.Destroy()
 }

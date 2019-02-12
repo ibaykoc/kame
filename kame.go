@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
@@ -50,21 +49,11 @@ func CreateWindow(title string, windowWidth int, windowHeight int, targetFps int
 	glfwWindow.SetPos(mW/2-windowWidth/2, mH/2-windowHeight/2)
 	glfwWindow.MakeContextCurrent()
 
-	if err := gl.Init(); err != nil {
-		return nil, err
-	}
-	// version := gl.GoStr(gl.GetString(gl.VERSION))
-	// fmt.Println("OpenGL initialized: version", version)
-	gl.ClearColor(
-		backgroundColor.R,
-		backgroundColor.G,
-		backgroundColor.B,
-		backgroundColor.A)
-
 	window := newWindow(
 		title,
 		windowWidth,
 		windowHeight,
+		backgroundColor,
 		targetFps,
 		glfwWindow,
 	)
