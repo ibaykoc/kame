@@ -10,12 +10,16 @@ import (
 	"runtime"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/gobuffalo/packr/v2"
 )
 
 var hasInitialized = false
 
+var Resource *packr.Box
+
 func Init() error {
 	runtime.LockOSThread()
+	Resource = packr.New("Resource", "./Resource")
 	if hasInitialized {
 		return errors.New("Can't initialize kame more than once")
 	}

@@ -27,6 +27,16 @@ func (vao *VAO) storeVBO(attributeIndex uint32, vbo VBO) {
 	vao.attributes[attributeIndex] = vbo
 }
 
+func (vao *VAO) storeEBO(indices []uint32) {
+	vao.bind()
+	var eboID uint32
+	gl.GenBuffers(1, &eboID)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, eboID)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
+	vao.unbind()
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
+}
+
 func (vao *VAO) bind() {
 	gl.BindVertexArray(vao.id)
 }

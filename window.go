@@ -35,18 +35,20 @@ func newWindow(title string, width int, height int, backgroundColor Color, targe
 		lastFrameStartTime: time.Now(),
 		glfwWindow:         glfwWindow,
 	}
-	glfwWindow.SetSizeCallback(func(w *glfw.Window, width int, height int) {
-		window.width = width
-		window.height = height
-		if window.OnSizeChangeCallback != nil {
-			window.OnSizeChangeCallback(width, height)
-		}
-	})
 	d, err := newDrawer(backgroundColor)
 	if err != nil {
 		panic(err)
 	}
 	window.Drawer = d
+	glfwWindow.SetSizeCallback(func(w *glfw.Window, width int, height int) {
+		window.MakeContextCurrent()
+		window.width = width
+		window.height = height
+		window.Drawer.changeSize(int32(width), int32(height))
+		if window.OnSizeChangeCallback != nil {
+			window.OnSizeChangeCallback(width, height)
+		}
+	})
 	return &window
 }
 
@@ -110,6 +112,7 @@ func (w *Window) HasClose() bool {
 }
 
 func (w *Window) Close() {
+	w.MakeContextCurrent()
 	w.hasClose = true
 	w.Drawer.dispose()
 	w.glfwWindow.Destroy()
