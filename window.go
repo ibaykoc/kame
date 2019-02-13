@@ -16,6 +16,7 @@ type Window struct {
 	width                int
 	height               int
 	targetFps            int
+	Input                Input
 	ShouldClose          bool
 	hasClose             bool
 	OnUpdate             func(deltaTime float64) // Called every frame before draw, received delta time (1 = meets targetFps)
@@ -49,6 +50,16 @@ func newWindow(title string, width int, height int, backgroundColor Color, targe
 			window.OnSizeChangeCallback(width, height)
 		}
 	})
+
+	i := newInput(glfwWindow)
+	window.Input = i
+	glfwWindow.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+		window.Input.glfwInputHandler(key, action)
+	})
+
+	glfwWindow.SetCursorPosCallback(func(w *glfw.Window, xpos float64, ypos float64) {
+		window.Input.glfwMousePosHandler(xpos, ypos)
+	})
 	return &window
 }
 
@@ -65,8 +76,8 @@ func (w *Window) Run() {
 	// Make context to current window
 	w.glfwWindow.MakeContextCurrent()
 
-	// Get input
-	glfw.PollEvents()
+	// Update window should close stat
+	w.ShouldClose = w.glfwWindow.ShouldClose()
 
 	// Do update
 	if w.OnUpdate != nil {
@@ -82,8 +93,9 @@ func (w *Window) Run() {
 	// Show drawn
 	w.glfwWindow.SwapBuffers()
 
-	// Update window should close stat
-	w.ShouldClose = w.glfwWindow.ShouldClose()
+	// Get input
+	w.Input.update()
+	glfw.PollEvents()
 }
 
 func (w *Window) MakeContextCurrent() {

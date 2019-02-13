@@ -5,26 +5,29 @@ import (
 )
 
 type VAO struct {
-	id         uint32
-	attributes map[uint32]VBO
+	id            uint32
+	attributeSize uint32
+	vboIDs        []uint32
 }
 
 func createVAO() VAO {
 	var vaoID uint32
 	gl.GenVertexArrays(1, &vaoID)
 	return VAO{
-		id:         vaoID,
-		attributes: make(map[uint32]VBO),
+		id: vaoID,
 	}
 }
 
-func (vao *VAO) storeVBO(attributeIndex uint32, vbo VBO) {
+func (vao *VAO) storeVBO(vbo VBO) {
 	vao.bind()
 	vbo.bind()
-	gl.VertexAttribPointer(attributeIndex, vbo.singleDataSize, vbo.dataType, false, vbo.stride, nil)
-	vbo.unbind()
+	for _, vboData := range vbo.data {
+		gl.VertexAttribPointer(vao.attributeSize, vboData.count, vbo.dataType, false, vbo.stride, gl.PtrOffset(vboData.byteOffset))
+		vao.attributeSize++
+	}
 	vao.unbind()
-	vao.attributes[attributeIndex] = vbo
+	vbo.unbind()
+	vao.vboIDs = append(vao.vboIDs, vbo.id)
 }
 
 func (vao *VAO) storeEBO(indices []uint32) {
@@ -46,8 +49,8 @@ func (vao *VAO) unbind() {
 }
 
 func (vao *VAO) dispose() {
-	for _, vbo := range vao.attributes {
-		vbo.dispose()
+	for _, vboID := range vao.vboIDs {
+		gl.DeleteBuffers(1, &vboID)
 	}
 	gl.DeleteVertexArrays(1, &vao.id)
 }

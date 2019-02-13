@@ -5,13 +5,15 @@ import (
 	"strings"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
+	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
 type ShaderProgram struct {
-	id uint32
+	id       uint32
+	uniforms map[string]int32
 }
 
-func createShaderProgram(vertexFilePath string, fragmetFilePath string) ShaderProgram {
+func createShaderProgram(vertexFilePath string, fragmetFilePath string, uniforms []string) ShaderProgram {
 	vsID := loadShader(vertexFilePath, gl.VERTEX_SHADER)
 	fsID := loadShader(fragmetFilePath, gl.FRAGMENT_SHADER)
 	shaderProgramID := gl.CreateProgram()
@@ -32,9 +34,42 @@ func createShaderProgram(vertexFilePath string, fragmetFilePath string) ShaderPr
 	// delete the shaders as they're linked into our program now and no longer necessery
 	gl.DeleteShader(fsID)
 	gl.DeleteShader(vsID)
-	return ShaderProgram{
-		id: shaderProgramID,
+
+	// Get uniforms
+	_uniforms := make(map[string]int32)
+	for _, uniform := range uniforms {
+		uniCstr := gl.Str(uniform + "\x00")
+		_uniforms[uniform] = gl.GetUniformLocation(shaderProgramID, uniCstr)
+
 	}
+	return ShaderProgram{
+		id:       shaderProgramID,
+		uniforms: _uniforms,
+	}
+}
+
+func (p *ShaderProgram) SetUniform1F(name string, value float32) {
+	uniLocation, found := p.uniforms[name]
+	if !found {
+		panic(fmt.Sprintf("Uniform (%v) not found", name))
+	}
+	gl.Uniform1f(uniLocation, value)
+}
+
+func (p *ShaderProgram) SetUniform3F(name string, v0 float32, v1 float32, v2 float32) {
+	uniLocation, found := p.uniforms[name]
+	if !found {
+		panic(fmt.Sprintf("Uniform (%v) not found", name))
+	}
+	gl.Uniform3f(uniLocation, v0, v1, v2)
+}
+func (p *ShaderProgram) SetUniformMat4F(name string, value mgl.Mat4) {
+	uniLocation, found := p.uniforms[name]
+	if !found {
+		panic(fmt.Sprintf("Uniform (%v) not found", name))
+	}
+	m4 := [16]float32(value)
+	gl.UniformMatrix4fv(uniLocation, 1, false, &m4[0])
 }
 
 func (p *ShaderProgram) Start() {

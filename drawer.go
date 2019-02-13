@@ -1,11 +1,15 @@
 package kame
 
 import (
+	"fmt"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
+	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
 type Drawer struct {
 	basicShaderProgram ShaderProgram
+	Camera             Camera
 	BackgroundColor    Color
 }
 
@@ -14,12 +18,22 @@ func newDrawer(backgroundColor Color) (*Drawer, error) {
 	if err := gl.Init(); err != nil {
 		return nil, err
 	}
-	// version := gl.GoStr(gl.GetString(gl.VERSION))
-	// fmt.Println("OpenGL initialized: version", version)
+	// Enable alpha blending
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	version := gl.GoStr(gl.GetString(gl.VERSION))
+	fmt.Println("OpenGL initialized: version", version)
 
 	basicShaderProgram := createShaderProgram(
-		"Shader/BasicVertexShader.glsl",
-		"Shader/BasicFragmentShader.glsl")
+		"Shader/BasicQuadTexture.vs",
+		"Shader/BasicQuadTexture.fs",
+		[]string{
+			"model",
+			"view",
+			"projection",
+		},
+	)
 
 	gl.ClearColor(
 		bgColor.R,
@@ -29,6 +43,7 @@ func newDrawer(backgroundColor Color) (*Drawer, error) {
 
 	return &Drawer{
 		BackgroundColor:    bgColor,
+		Camera:             CreateCamera(0, 0, -3),
 		basicShaderProgram: basicShaderProgram,
 	}, nil
 }
@@ -41,19 +56,25 @@ func (d *Drawer) clear() {
 // }
 
 func (d *Drawer) Draw(model DrawableModel) {
-	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE
 	d.basicShaderProgram.Start()
-
+	mMat := mgl.Translate3D(0, 0, 0)
+	mMat = mMat.Mul4(mgl.HomogRotate3DZ(0))
+	mMat = mMat.Mul4(mgl.Scale3D(1, 1, 1))
+	d.basicShaderProgram.SetUniformMat4F("model", mMat)
+	d.basicShaderProgram.SetUniformMat4F("view", d.Camera.viewMatrix())
+	pMat := mgl.Perspective(mgl.DegToRad(45), 540/480, 0.1, 100)
+	d.basicShaderProgram.SetUniformMat4F("projection", pMat)
 	model.vao.bind()
 
-	for attribID := range model.vao.attributes {
-		gl.EnableVertexAttribArray(attribID)
+	for attrID := uint32(0); attrID < model.vao.attributeSize; attrID++ {
+		gl.EnableVertexAttribArray(attrID)
 	}
+	gl.BindTexture(gl.TEXTURE_2D, model.textureID)
+	gl.DrawElements(gl.TRIANGLES, model.vertexSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
 
-	gl.DrawElements(gl.TRIANGLES, model.vertexSize, gl.UNSIGNED_INT, nil)
-
-	for attribID := range model.vao.attributes {
-		gl.DisableVertexAttribArray(attribID)
+	for attrID := uint32(0); attrID < model.vao.attributeSize; attrID++ {
+		gl.DisableVertexAttribArray(attrID)
 	}
 	model.vao.unbind()
 	d.basicShaderProgram.Stop()

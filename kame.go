@@ -17,12 +17,15 @@ var hasInitialized = false
 
 var Resource *packr.Box
 
+var input Input
+
 func Init() error {
 	runtime.LockOSThread()
-	Resource = packr.New("Resource", "./Resource")
 	if hasInitialized {
 		return errors.New("Can't initialize kame more than once")
 	}
+	input = Input{}
+	Resource = packr.New("Resource", "./Resource")
 	if err := glfw.Init(); err != nil {
 		return err
 	}
@@ -52,7 +55,6 @@ func CreateWindow(title string, windowWidth int, windowHeight int, targetFps int
 	mH := vMode.Height
 	glfwWindow.SetPos(mW/2-windowWidth/2, mH/2-windowHeight/2)
 	glfwWindow.MakeContextCurrent()
-
 	window := newWindow(
 		title,
 		windowWidth,
