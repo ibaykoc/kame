@@ -36,7 +36,7 @@ func newWindow(title string, width int, height int, backgroundColor Color, targe
 		lastFrameStartTime: time.Now(),
 		glfwWindow:         glfwWindow,
 	}
-	d, err := newDrawer(backgroundColor)
+	d, err := newDrawer(&window, backgroundColor)
 	if err != nil {
 		panic(err)
 	}

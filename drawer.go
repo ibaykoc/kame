@@ -13,7 +13,7 @@ type Drawer struct {
 	BackgroundColor    Color
 }
 
-func newDrawer(backgroundColor Color) (*Drawer, error) {
+func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 	bgColor := backgroundColor
 	if err := gl.Init(); err != nil {
 		return nil, err
@@ -22,6 +22,8 @@ func newDrawer(backgroundColor Color) (*Drawer, error) {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
+	gl.Enable(gl.DEPTH_TEST)
+	// gl.Enable(gl.CULL_FACE)
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	fmt.Println("OpenGL initialized: version", version)
 
@@ -34,6 +36,11 @@ func newDrawer(backgroundColor Color) (*Drawer, error) {
 			"projection",
 		},
 	)
+	basicShaderProgram.Start()
+
+	pMat := mgl.Perspective(mgl.DegToRad(45), float32(window.width)/float32(window.height), 0.1, 1000)
+	basicShaderProgram.SetUniformMat4F("projection", pMat)
+	basicShaderProgram.Stop()
 
 	gl.ClearColor(
 		bgColor.R,
@@ -43,40 +50,35 @@ func newDrawer(backgroundColor Color) (*Drawer, error) {
 
 	return &Drawer{
 		BackgroundColor:    bgColor,
-		Camera:             CreateCamera(0, 0, -3),
+		Camera:             CreateCamera(),
 		basicShaderProgram: basicShaderProgram,
 	}, nil
 }
 
 func (d *Drawer) clear() {
-	gl.Clear(gl.COLOR_BUFFER_BIT)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
 // func (d *Drawer) DrawRect(x float32, y float32, w float32, h float32) {
 // }
 
-func (d *Drawer) Draw(model DrawableModel) {
+func (d *Drawer) Draw(e Entity) {
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE
 	d.basicShaderProgram.Start()
-	mMat := mgl.Translate3D(0, 0, 0)
-	mMat = mMat.Mul4(mgl.HomogRotate3DZ(0))
-	mMat = mMat.Mul4(mgl.Scale3D(1, 1, 1))
-	d.basicShaderProgram.SetUniformMat4F("model", mMat)
+	d.basicShaderProgram.SetUniformMat4F("model", e.modelMatrix())
 	d.basicShaderProgram.SetUniformMat4F("view", d.Camera.viewMatrix())
-	pMat := mgl.Perspective(mgl.DegToRad(45), 540/480, 0.1, 100)
-	d.basicShaderProgram.SetUniformMat4F("projection", pMat)
-	model.vao.bind()
+	e.DrawableModel.vao.bind()
 
-	for attrID := uint32(0); attrID < model.vao.attributeSize; attrID++ {
+	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {
 		gl.EnableVertexAttribArray(attrID)
 	}
-	gl.BindTexture(gl.TEXTURE_2D, model.textureID)
-	gl.DrawElements(gl.TRIANGLES, model.vertexSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
+	gl.BindTexture(gl.TEXTURE_2D, e.DrawableModel.textureID)
+	gl.DrawElements(gl.TRIANGLES, e.DrawableModel.vertexSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
 
-	for attrID := uint32(0); attrID < model.vao.attributeSize; attrID++ {
+	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {
 		gl.DisableVertexAttribArray(attrID)
 	}
-	model.vao.unbind()
+	e.DrawableModel.vao.unbind()
 	d.basicShaderProgram.Stop()
 }
 
