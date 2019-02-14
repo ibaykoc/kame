@@ -93,10 +93,10 @@ func LoadOBJ(window *Window, filePath string, texturePath string) DrawableModel 
 		data[i+7] = -v.normal.Z
 	}
 
-	fmt.Printf("verts: %v\n\n", verts)
-	fmt.Println("")
-	fmt.Println(facesToIndices)
-	fmt.Println(indices)
+	// fmt.Printf("verts: %v\n\n", verts)
+	// fmt.Println("")
+	// fmt.Println(facesToIndices)
+	// fmt.Println(indices)
 
 	return CreateDrawableModelPositionUVNormals(
 		window,
