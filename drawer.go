@@ -72,7 +72,9 @@ func (d *Drawer) Draw(e Entity) {
 	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {
 		gl.EnableVertexAttribArray(attrID)
 	}
-	gl.BindTexture(gl.TEXTURE_2D, e.DrawableModel.textureID)
+	if e.DrawableModel.hasTexture {
+		gl.BindTexture(gl.TEXTURE_2D, e.DrawableModel.textureID)
+	}
 	gl.DrawElements(gl.TRIANGLES, e.DrawableModel.vertexSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
 
 	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {
