@@ -17,6 +17,6 @@ void main() {
     vec4 worldPosition = model * vec4(inPosition, 1.0);
     vOutTexCoord = inTexCoord;
     vOutSurfaceNormal = (model * vec4(inNormal, 0.0)).xyz;
-    vOutToLightVector = worldPosition.xyz -lightPosition ;
+    vOutToLightVector = lightPosition - worldPosition.xyz ;
 	gl_Position = projection * view * worldPosition;
 }

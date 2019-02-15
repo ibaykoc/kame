@@ -24,18 +24,19 @@ func LoadTexture(texturePath string) uint32 {
 	imgWidth := int32(image.Bounds().Max.X)
 	imgHeight := int32(image.Bounds().Max.Y)
 	pixels := make([]byte, imgWidth*imgHeight*4)
-	pixelIndex := 0
+	// Flip texture (0th index start from bottom left)
+	pixelIndex := len(pixels) - 1
 	for y := 0; y < int(imgHeight); y++ {
-		for x := 0; x < int(imgWidth); x++ {
+		for x := int(imgWidth) - 1; x >= 0; x-- {
 			r, g, b, a := image.At(x, y).RGBA()
-			pixels[pixelIndex] = byte(r / 256)
-			pixelIndex++
-			pixels[pixelIndex] = byte(g / 256)
-			pixelIndex++
-			pixels[pixelIndex] = byte(b / 256)
-			pixelIndex++
 			pixels[pixelIndex] = byte(a / 256)
-			pixelIndex++
+			pixelIndex--
+			pixels[pixelIndex] = byte(b / 256)
+			pixelIndex--
+			pixels[pixelIndex] = byte(g / 256)
+			pixelIndex--
+			pixels[pixelIndex] = byte(r / 256)
+			pixelIndex--
 		}
 	}
 	var tID uint32

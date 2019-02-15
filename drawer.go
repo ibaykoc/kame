@@ -24,7 +24,7 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 	gl.Enable(gl.DEPTH_TEST)
-	// gl.Enable(gl.CULL_FACE)
+	gl.Enable(gl.CULL_FACE)
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	fmt.Println("OpenGL initialized: version", version)
 
@@ -40,7 +40,7 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 		},
 	)
 	light := Light{
-		position: mgl.Vec3{0, 0, 0},
+		position: mgl.Vec3{0, 0, 10},
 		color:    mgl.Vec3{1, 1, 1},
 	}
 	pMat := mgl.Perspective(mgl.DegToRad(45), float32(window.width)/float32(window.height), 0.1, 1000)
@@ -48,6 +48,7 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 	basicShaderProgram.Start()
 	basicShaderProgram.SetUniformMat4F("projection", pMat)
 	basicShaderProgram.SetUniform3F("lightColor", light.color.X(), light.color.Y(), light.color.Z())
+	basicShaderProgram.SetUniform3F("lightPosition", light.position.X(), light.position.Y(), light.position.Z())
 	basicShaderProgram.Stop()
 
 	gl.ClearColor(
@@ -72,11 +73,9 @@ func (d *Drawer) clear() {
 
 func (d *Drawer) Draw(e Entity) {
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-	d.light.position = d.Camera.position
 	d.basicShaderProgram.Start()
-	d.basicShaderProgram.SetUniformMat4F("model", e.modelMatrix())
+	d.basicShaderProgram.SetUniformMat4F("model", e.modelMatrix)
 	d.basicShaderProgram.SetUniformMat4F("view", d.Camera.viewMatrix())
-	d.basicShaderProgram.SetUniform3F("lightPosition", d.light.position.X(), d.light.position.Y(), d.light.position.Z())
 	e.DrawableModel.vao.bind()
 
 	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {

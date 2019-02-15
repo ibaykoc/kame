@@ -87,10 +87,10 @@ func LoadOBJ(window *Window, filePath string, texturePath string) DrawableModel 
 		data[i+1] = v.position.Y
 		data[i+2] = v.position.Z
 		data[i+3] = v.uv.X
-		data[i+4] = -v.uv.Y
-		data[i+5] = -v.normal.X
-		data[i+6] = -v.normal.Y
-		data[i+7] = -v.normal.Z
+		data[i+4] = v.uv.Y
+		data[i+5] = v.normal.X
+		data[i+6] = v.normal.Y
+		data[i+7] = v.normal.Z
 	}
 
 	// fmt.Printf("verts: %v\n\n", verts)
