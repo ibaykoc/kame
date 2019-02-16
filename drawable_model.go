@@ -70,6 +70,7 @@ func (dm *DrawableModel) stopDraw() {
 	}
 }
 
+// CreateDrawableModel create drawable model with built in mesh
 func CreateDrawableModel(meshType MeshType) DrawableModel {
 	var positions []float32
 	var uvs []float32
@@ -121,6 +122,8 @@ func CreateDrawableModel(meshType MeshType) DrawableModel {
 	}
 	return model
 }
+
+// CreateDrawableModelT create drawable model with built in mesh and defined texture
 func CreateDrawableModelT(meshType MeshType, texturePath string) (DrawableModel, error) {
 	dm := CreateDrawableModel(meshType)
 	if err := dm.loadTextureFile(texturePath); err != nil {
@@ -162,7 +165,7 @@ func CreateDrawableModel0(positions []float32, elements []uint32) (DrawableModel
 	}, nil
 }
 
-// CreateDrawableModel1 creates drawable models with position, UV, and texture data
+// CreateDrawableModel1 creates drawable models with position, and UV data
 func CreateDrawableModel1(positions []float32, uvs []float32, elements []uint32) (DrawableModel, error) {
 	{ //Validation
 		// positions data validation
@@ -223,21 +226,81 @@ func CreateDrawableModel1(positions []float32, uvs []float32, elements []uint32)
 	}, nil
 }
 
+// CreateDrawableModel1T creates drawable models with position, UV, and texture data
 func CreateDrawableModel1T(positions []float32, uvs []float32, elements []uint32, texturePath string) (DrawableModel, error) {
 	dm, err := CreateDrawableModel1(positions, uvs, elements)
 	if err != nil {
 		return DrawableModel{}, nil
 	}
-	textureID, err := loadTextureFile(texturePath)
-	if err != nil {
-		return DrawableModel{}, nil
+	if err := dm.loadTextureFile(texturePath); err != nil {
+		return DrawableModel{}, err
 	}
-	dm.textureIDs = []uint32{textureID}
 	return dm, nil
 }
 
-// CreateDrawableModel2 creates drawable models with position, UV, normal, and texture data
-func CreateDrawableModel2(positions []float32, uvs []float32, normals []float32, elements []uint32, texturePath string) (DrawableModel, error) {
+// CreateDrawableModel2 creates drawable models with position, and normal data
+func CreateDrawableModel2(positions []float32, normals []float32, elements []uint32) (DrawableModel, error) {
+	// positions data validation
+	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentPosition, len(positions)); foundErr {
+		return DrawableModel{}, err
+	}
+
+	// normals data validation
+	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentNormal, len(normals)); foundErr {
+		return DrawableModel{}, err
+	}
+	if foundErr, err := validateVertexDataMatchToPosition(drawableDataComponentNormal, normals, positions); foundErr {
+		return DrawableModel{}, err
+	}
+
+	// indices data validation
+	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentElements, len(elements)); foundErr {
+		return DrawableModel{}, err
+	}
+	perVertexDataCount := int32(6)
+	data := make([]float32, len(positions)+len(normals))
+	for i := 0; i < len(data)/int(perVertexDataCount); i++ {
+		dataI := i * int(perVertexDataCount)
+		// position
+		positionI := i * 3
+		data[dataI] = positions[positionI]
+		data[dataI+1] = positions[positionI+1]
+		data[dataI+2] = positions[positionI+2]
+		// normal
+		normalI := i * 3
+		data[dataI+3] = normals[normalI]
+		data[dataI+4] = normals[normalI+1]
+		data[dataI+5] = normals[normalI+2]
+	}
+
+	vao := createVAO()
+
+	vbo := createFloat32VBO(perVertexDataCount,
+		[]VBOData{
+			// Pos
+			VBOData{
+				count:      3,
+				byteOffset: 0,
+			},
+			// Norms
+			VBOData{
+				count:      3,
+				byteOffset: 5 * 4,
+			},
+		},
+		data)
+	vao.storeVBO(vbo)
+	vao.storeEBO(elements)
+
+	return DrawableModel{
+		vao:         vao,
+		textureIDs:  []uint32{},
+		elementSize: int32(len(elements)),
+	}, nil
+}
+
+// CreateDrawableModel2 creates drawable models with position, UV, and normal data
+func CreateDrawableModel3(positions []float32, uvs []float32, normals []float32, elements []uint32) (DrawableModel, error) {
 	// positions data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentPosition, len(positions)); foundErr {
 		return DrawableModel{}, err
@@ -306,26 +369,27 @@ func CreateDrawableModel2(positions []float32, uvs []float32, normals []float32,
 		data)
 	vao.storeVBO(vbo)
 	vao.storeEBO(elements)
-	if loadedTexture, foundLoadedTexture := window.drawer.loadedTextureFile[texturePath]; foundLoadedTexture {
-		return DrawableModel{
-			vao:         vao,
-			textureIDs:  []uint32{loadedTexture},
-			elementSize: int32(len(elements)),
-		}, nil
-	}
 
-	textureID, err := loadTextureFile(texturePath)
-	if err != nil {
-		return DrawableModel{}, nil
-	}
-	window.drawer.loadedTextureFile[texturePath] = textureID
 	return DrawableModel{
 		vao:         vao,
-		textureIDs:  []uint32{textureID},
+		textureIDs:  []uint32{},
 		elementSize: int32(len(elements)),
 	}, nil
 }
 
+// CreateDrawableModel2T creates drawable models with position, UV, normal, and texture data
+func CreateDrawableModel3T(positions []float32, uvs []float32, normals []float32, elements []uint32, texturePath string) (DrawableModel, error) {
+	dm, err := CreateDrawableModel3(positions, uvs, normals, elements)
+	if err != nil {
+		return DrawableModel{}, nil
+	}
+	if err := dm.loadTextureFile(texturePath); err != nil {
+		return DrawableModel{}, err
+	}
+	return dm, nil
+}
+
+// Dispose dispose drawable model
 func (dm *DrawableModel) Dispose() {
 	dm.vao.dispose()
 }
