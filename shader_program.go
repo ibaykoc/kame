@@ -53,7 +53,7 @@ func createShaderProgram(vertexShaderSource string, fragmentShaderSource string,
 func (p *ShaderProgram) SetUniform1i(name string, value int32) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
-		panic(fmt.Sprintf("Uniform (%v) not found", name))
+		panic(fmt.Errorf("Uniform (%v) not found", name))
 	}
 	gl.Uniform1i(uniLocation, value)
 }
@@ -61,7 +61,7 @@ func (p *ShaderProgram) SetUniform1i(name string, value int32) {
 func (p *ShaderProgram) SetUniform1F(name string, value float32) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
-		panic(fmt.Sprintf("Uniform (%v) not found", name))
+		panic(fmt.Errorf("Uniform (%v) not found", name))
 	}
 	gl.Uniform1f(uniLocation, value)
 }
@@ -69,14 +69,14 @@ func (p *ShaderProgram) SetUniform1F(name string, value float32) {
 func (p *ShaderProgram) SetUniform3F(name string, v0 float32, v1 float32, v2 float32) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
-		panic(fmt.Sprintf("Uniform (%v) not found", name))
+		panic(fmt.Errorf("Uniform (%v) not found", name))
 	}
 	gl.Uniform3f(uniLocation, v0, v1, v2)
 }
 func (p *ShaderProgram) SetUniformMat4F(name string, value mgl.Mat4) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
-		panic(fmt.Sprintf("Uniform (%v) not found", name))
+		panic(fmt.Errorf("Uniform (%v) not found", name))
 	}
 	m4 := [16]float32(value)
 	gl.UniformMatrix4fv(uniLocation, 1, false, &m4[0])

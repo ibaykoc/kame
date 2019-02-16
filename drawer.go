@@ -4,7 +4,6 @@ import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 
 	"github.com/go-gl/mathgl/mgl32"
-	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
 // Drawer to draw something onto the screen
@@ -41,11 +40,11 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 			"hasTexture",
 		},
 	)
-	camera := createCamera()
+	camera := createCamera(mgl32.DegToRad(90))
 
 	defaultShaderProgram.Start()
 	defaultShaderProgram.SetUniformMat4F("v", camera.viewMatrix())
-	defaultShaderProgram.SetUniformMat4F("p", mgl32.Perspective(mgl.DegToRad(45), float32(window.width)/float32(window.height), 0.1, 100))
+	defaultShaderProgram.SetUniformMat4F("p", mgl32.Perspective(camera.fov, float32(window.width)/float32(window.height), 0.1, 100))
 	defaultShaderProgram.SetUniform1i("defaultTexture", 0)
 	defaultShaderProgram.SetUniform1i("userDefinedTexture0", 1)
 	defaultShaderProgram.Stop()
@@ -92,6 +91,7 @@ func (d *Drawer) DrawAtRotation(dm DrawableModel, rotation mgl32.Vec3) {
 }
 func (d *Drawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
 	d.defaultShaderProgram.Start()
+	d.defaultShaderProgram.SetUniformMat4F("v", d.camera.viewMatrix())
 	d.defaultShaderProgram.SetUniformMat4F("m", translation)
 	dm.startDraw()
 	gl.DrawElements(gl.TRIANGLES, dm.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
@@ -99,6 +99,9 @@ func (d *Drawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
 	d.defaultShaderProgram.Stop()
 }
 func (d *Drawer) changeSize(width int32, height int32) {
+	d.defaultShaderProgram.Start()
+	d.defaultShaderProgram.SetUniformMat4F("p", mgl32.Perspective(d.camera.fov, float32(width)/float32(height), 0.1, 100))
+	d.defaultShaderProgram.Stop()
 	gl.Viewport(0, 0, width, height)
 }
 

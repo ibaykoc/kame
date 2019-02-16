@@ -29,7 +29,25 @@ func TurnOn(updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
 	}
 	hasInitialized = true
 	var err error
-	window, err = createWindow(updateFunc, drawFunc)
+	window, err = createDefaultWindow(updateFunc, drawFunc)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("kame Turned On")
+	return window, nil
+}
+
+func TurnOnConfigured(config WindowConfig, updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
+	runtime.LockOSThread()
+	if hasInitialized {
+		return nil, errors.New("kame Has Turned On")
+	}
+	if err := glfw.Init(); err != nil {
+		return nil, err
+	}
+	hasInitialized = true
+	var err error
+	window, err = createWindowWithConfig(config, updateFunc, drawFunc)
 	if err != nil {
 		return nil, err
 	}

@@ -8,12 +8,12 @@ type Key int
 type KeyAction int
 type Input struct {
 	keyStats    map[Key]KeyAction
-	MouseX      float64
-	MouseY      float64
-	MouseDeltaX float64
-	MouseDeltaY float64
-	prevMouseX  float64
-	prevMouseY  float64
+	MouseX      float32
+	MouseY      float32
+	MouseDeltaX float32
+	MouseDeltaY float32
+	prevMouseX  float32
+	prevMouseY  float32
 	glfwWindow  *glfw.Window
 }
 
@@ -278,10 +278,10 @@ func newInput(glfwWindow *glfw.Window) Input {
 	return Input{
 		keyStats:   ks,
 		glfwWindow: glfwWindow,
-		MouseX:     mX,
-		MouseY:     mY,
-		prevMouseX: mX,
-		prevMouseY: mY,
+		MouseX:     float32(mX),
+		MouseY:     float32(mY),
+		prevMouseX: float32(mX),
+		prevMouseY: float32(mY),
 	}
 }
 
@@ -303,8 +303,8 @@ func (i *Input) glfwInputHandler(glfwKey glfw.Key, glfwAction glfw.Action) {
 }
 
 func (i *Input) glfwMousePosHandler(x, y float64) {
-	i.MouseX = x
-	i.MouseY = y
+	i.MouseX = float32(x)
+	i.MouseY = float32(y)
 }
 
 func (i *Input) update() {
