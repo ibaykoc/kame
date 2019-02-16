@@ -3,6 +3,7 @@ package kame
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -28,9 +29,11 @@ func newVertex() Vertex {
 	return Vertex{}
 }
 
-func LoadOBJ(window *Window, filePath string, texturePath string) DrawableModel {
-	file, err := Resource.Open(filePath)
-	panciCheck(err)
+func LoadOBJ(filePath string, texturePath string) (DrawableModel, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return DrawableModel{}, err
+	}
 
 	scanner := bufio.NewScanner(file)
 	positions := make([]V3f, 0)
@@ -79,18 +82,22 @@ func LoadOBJ(window *Window, filePath string, texturePath string) DrawableModel 
 		indices[i] = facesToIndices[faces[i]]
 	}
 
-	data := make([]float32, len(facesToIndices)*8)
+	positionData := make([]float32, len(facesToIndices)*3)
+	uvData := make([]float32, len(facesToIndices)*2)
+	normalData := make([]float32, len(facesToIndices)*3)
 	for face, indice := range facesToIndices {
 		v := verts[face]
-		i := indice * 8
-		data[i] = v.position.X
-		data[i+1] = v.position.Y
-		data[i+2] = v.position.Z
-		data[i+3] = v.uv.X
-		data[i+4] = v.uv.Y
-		data[i+5] = v.normal.X
-		data[i+6] = v.normal.Y
-		data[i+7] = v.normal.Z
+		positionI := indice * 3
+		uvI := indice * 2
+		normalI := indice * 3
+		positionData[positionI] = v.position.X
+		positionData[positionI+1] = v.position.Y
+		positionData[positionI+2] = v.position.Z
+		uvData[uvI] = v.uv.X
+		uvData[uvI+1] = v.uv.Y
+		normalData[normalI] = v.normal.X
+		normalData[normalI+1] = v.normal.Y
+		normalData[normalI+2] = v.normal.Z
 	}
 
 	// fmt.Printf("verts: %v\n\n", verts)
@@ -98,12 +105,17 @@ func LoadOBJ(window *Window, filePath string, texturePath string) DrawableModel 
 	// fmt.Println(facesToIndices)
 	// fmt.Println(indices)
 
-	return CreateDrawableModelPositionUVNormals(
-		window,
-		data,
+	model, err := CreateDrawableModel2(
+		positionData,
+		uvData,
+		normalData,
 		indices,
 		texturePath,
 	)
+	if err != nil {
+		return DrawableModel{}, err
+	}
+	return model, nil
 }
 
 func panciCheck(err error) {

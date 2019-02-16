@@ -10,63 +10,36 @@ import (
 	"runtime"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
-	"github.com/gobuffalo/packr/v2"
 )
 
 var hasInitialized = false
+var window *Window
 
-var Resource *packr.Box
-
-var input Input
-
-func Init() error {
+// TurnOn needs update & draw function that will be called every frame sequentially
+// and returns Window and also error if something goes wrong.
+// And finally, don't forget to Turn Off
+// Have Fun <3
+func TurnOn(updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
 	runtime.LockOSThread()
 	if hasInitialized {
-		return errors.New("Can't initialize kame more than once")
+		return nil, errors.New("kame Has Turned On")
 	}
-	input = Input{}
-	Resource = packr.New("Resource", "./Resource")
 	if err := glfw.Init(); err != nil {
-		return err
+		return nil, err
 	}
 	hasInitialized = true
-	fmt.Println("kame succesfully initialize")
-	return nil
-}
-
-func CreateWindow(title string, windowWidth int, windowHeight int, targetFps int, backgroundColor Color) (*Window, error) {
-	if !hasInitialized {
-		return nil, errors.New("Kame should be initialized first")
-	}
-	glfw.WindowHint(glfw.Resizable, glfw.True)
-	glfw.WindowHint(glfw.ContextVersionMajor, 4)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-
-	glfwWindow, err := glfw.CreateWindow(windowWidth, windowHeight, title, nil, nil)
+	var err error
+	window, err = createWindow(updateFunc, drawFunc)
 	if err != nil {
 		return nil, err
 	}
-
-	// Center Window
-	vMode := glfw.GetPrimaryMonitor().GetVideoMode()
-	mW := vMode.Width
-	mH := vMode.Height
-	glfwWindow.SetPos(mW/2-windowWidth/2, mH/2-windowHeight/2)
-	glfwWindow.MakeContextCurrent()
-	window := newWindow(
-		title,
-		windowWidth,
-		windowHeight,
-		backgroundColor,
-		targetFps,
-		glfwWindow,
-	)
+	fmt.Println("kame Turned On")
 	return window, nil
 }
 
-func Quit() {
+// TurnOff turn off kame
+func TurnOff() {
+	window.Close()
 	glfw.Terminate()
-	fmt.Println("kame succesfully quit")
+	fmt.Println("kame Turned Off")
 }

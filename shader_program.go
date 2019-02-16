@@ -9,13 +9,14 @@ import (
 )
 
 type ShaderProgram struct {
-	id       uint32
-	uniforms map[string]int32
+	id               uint32
+	defaultTextureID uint32
+	uniforms         map[string]int32
 }
 
-func createShaderProgram(vertexFilePath string, fragmetFilePath string, uniforms []string) ShaderProgram {
-	vsID := loadShader(vertexFilePath, gl.VERTEX_SHADER)
-	fsID := loadShader(fragmetFilePath, gl.FRAGMENT_SHADER)
+func createShaderProgram(vertexShaderSource string, fragmentShaderSource string, uniforms []string) ShaderProgram {
+	vsID := loadShader(vertexShaderSource, gl.VERTEX_SHADER)
+	fsID := loadShader(fragmentShaderSource, gl.FRAGMENT_SHADER)
 	shaderProgramID := gl.CreateProgram()
 	gl.AttachShader(shaderProgramID, vsID)
 	gl.AttachShader(shaderProgramID, fsID)
@@ -43,9 +44,18 @@ func createShaderProgram(vertexFilePath string, fragmetFilePath string, uniforms
 
 	}
 	return ShaderProgram{
-		id:       shaderProgramID,
-		uniforms: _uniforms,
+		id:               shaderProgramID,
+		defaultTextureID: LoadDefaultTexture(),
+		uniforms:         _uniforms,
 	}
+}
+
+func (p *ShaderProgram) SetUniform1i(name string, value int32) {
+	uniLocation, found := p.uniforms[name]
+	if !found {
+		panic(fmt.Sprintf("Uniform (%v) not found", name))
+	}
+	gl.Uniform1i(uniLocation, value)
 }
 
 func (p *ShaderProgram) SetUniform1F(name string, value float32) {
@@ -81,12 +91,8 @@ func (p *ShaderProgram) Stop() {
 func (p *ShaderProgram) Dispose() {
 	gl.DeleteProgram(p.id)
 }
-func loadShader(filePath string, shaderType uint32) uint32 {
-	shaderSourceByte, err := Resource.Find(filePath)
-	if err != nil {
-		panic(err)
-	}
-	shaderSource := string(shaderSourceByte) + "\x00"
+func loadShader(source string, shaderType uint32) uint32 {
+	shaderSource := source + "\x00"
 	shaderID := gl.CreateShader(shaderType)
 	cstr, free := gl.Strs(shaderSource)
 	gl.ShaderSource(shaderID, 1, cstr, nil)
@@ -101,7 +107,7 @@ func loadShader(filePath string, shaderType uint32) uint32 {
 		log := strings.Repeat("\x00", int(logLength+1))
 		gl.GetShaderInfoLog(shaderID, logLength, nil, gl.Str(log))
 
-		fmt.Printf("failed to compile shader (type %d): \n%v\n%v\n", shaderType, log, shaderSource)
+		fmt.Printf("failed to compile shader\nTYPE: %v\nLOG: %v\nSOURCE: %v\n", shaderType, log, shaderSource)
 	}
 	return shaderID
 }

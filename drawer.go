@@ -1,17 +1,18 @@
 package kame
 
 import (
-	"fmt"
-
 	"github.com/go-gl/gl/v4.1-core/gl"
+
+	"github.com/go-gl/mathgl/mgl32"
 	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
+// Drawer to draw something onto the screen
 type Drawer struct {
-	light              Light
-	basicShaderProgram ShaderProgram
-	Camera             Camera
-	BackgroundColor    Color
+	BackgroundColor      Color
+	camera               Camera
+	defaultShaderProgram ShaderProgram
+	loadedTextureFile    map[string]uint32
 }
 
 func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
@@ -25,31 +26,29 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 
 	gl.Enable(gl.DEPTH_TEST)
 	gl.Enable(gl.CULL_FACE)
-	version := gl.GoStr(gl.GetString(gl.VERSION))
-	fmt.Println("OpenGL initialized: version", version)
+	// version := gl.GoStr(gl.GetString(gl.VERSION))
+	// fmt.Println("OpenGL initialized: version", version)
 
-	basicShaderProgram := createShaderProgram(
-		"Shader/BasicQuadTexture.vs",
-		"Shader/BasicQuadTexture.fs",
+	defaultShaderProgram := createShaderProgram(
+		defaultVertexShader,
+		defaultFragmentShader,
 		[]string{
-			"model",
-			"view",
-			"projection",
-			"lightPosition",
-			"lightColor",
+			"m",
+			"v",
+			"p",
+			"defaultTexture",
+			"userDefinedTexture0",
+			"hasTexture",
 		},
 	)
-	light := Light{
-		position: mgl.Vec3{0, 0, 10},
-		color:    mgl.Vec3{1, 1, 1},
-	}
-	pMat := mgl.Perspective(mgl.DegToRad(45), float32(window.width)/float32(window.height), 0.1, 1000)
+	camera := createCamera()
 
-	basicShaderProgram.Start()
-	basicShaderProgram.SetUniformMat4F("projection", pMat)
-	basicShaderProgram.SetUniform3F("lightColor", light.color.X(), light.color.Y(), light.color.Z())
-	basicShaderProgram.SetUniform3F("lightPosition", light.position.X(), light.position.Y(), light.position.Z())
-	basicShaderProgram.Stop()
+	defaultShaderProgram.Start()
+	defaultShaderProgram.SetUniformMat4F("v", camera.viewMatrix())
+	defaultShaderProgram.SetUniformMat4F("p", mgl32.Perspective(mgl.DegToRad(45), float32(window.width)/float32(window.height), 0.1, 100))
+	defaultShaderProgram.SetUniform1i("defaultTexture", 0)
+	defaultShaderProgram.SetUniform1i("userDefinedTexture0", 1)
+	defaultShaderProgram.Stop()
 
 	gl.ClearColor(
 		bgColor.R,
@@ -58,45 +57,54 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 		bgColor.A)
 
 	return &Drawer{
-		BackgroundColor:    bgColor,
-		Camera:             CreateCamera(),
-		basicShaderProgram: basicShaderProgram,
+		BackgroundColor:      bgColor,
+		defaultShaderProgram: defaultShaderProgram,
+		camera:               camera,
+		loadedTextureFile:    make(map[string]uint32),
 	}, nil
+}
+
+func (d *Drawer) MoveCameraRelative(x, y, z float32) {
+	d.camera.Move(x, y, z)
+	d.defaultShaderProgram.Start()
+	d.defaultShaderProgram.SetUniformMat4F("v", d.camera.viewMatrix())
+	d.defaultShaderProgram.Stop()
 }
 
 func (d *Drawer) clear() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
-// func (d *Drawer) DrawRect(x float32, y float32, w float32, h float32) {
-// }
-
-func (d *Drawer) Draw(e Entity) {
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
-	d.basicShaderProgram.Start()
-	d.basicShaderProgram.SetUniformMat4F("model", e.modelMatrix)
-	d.basicShaderProgram.SetUniformMat4F("view", d.Camera.viewMatrix())
-	e.DrawableModel.vao.bind()
-
-	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {
-		gl.EnableVertexAttribArray(attrID)
-	}
-	if e.DrawableModel.hasTexture {
-		gl.BindTexture(gl.TEXTURE_2D, e.DrawableModel.textureID)
-	}
-	gl.DrawElements(gl.TRIANGLES, e.DrawableModel.vertexSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
-
-	for attrID := uint32(0); attrID < e.DrawableModel.vao.attributeSize; attrID++ {
-		gl.DisableVertexAttribArray(attrID)
-	}
-	e.DrawableModel.vao.unbind()
-	d.basicShaderProgram.Stop()
+// Draw draw model at default position
+func (d *Drawer) Draw(dm DrawableModel) {
+	d.DrawAt(dm, mgl32.Translate3D(0, 0, 0))
 }
 
+// Draw0 draw model at specified position
+func (d *Drawer) DrawAtPosition(dm DrawableModel, position mgl32.Vec3) {
+	d.DrawAt(dm, mgl32.Translate3D(position.Elem()))
+}
+
+func (d *Drawer) DrawAtRotation(dm DrawableModel, rotation mgl32.Vec3) {
+	rValue := rotation.Len()
+	rAxis := rotation.Normalize()
+	d.DrawAt(dm, mgl32.Translate3D(0, 0, 0).Mul4(mgl32.HomogRotate3D(rValue, rAxis)))
+}
+func (d *Drawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
+	d.defaultShaderProgram.Start()
+	d.defaultShaderProgram.SetUniformMat4F("m", translation)
+	dm.startDraw()
+	gl.DrawElements(gl.TRIANGLES, dm.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
+	dm.stopDraw()
+	d.defaultShaderProgram.Stop()
+}
 func (d *Drawer) changeSize(width int32, height int32) {
 	gl.Viewport(0, 0, width, height)
 }
 
 func (d *Drawer) dispose() {
-	d.basicShaderProgram.Dispose()
+	d.defaultShaderProgram.Dispose()
+	for _, textureID := range d.loadedTextureFile {
+		gl.DeleteTextures(1, &textureID)
+	}
 }

@@ -40,6 +40,20 @@ func (vao *VAO) storeEBO(indices []uint32) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
 }
 
+func (vao *VAO) use() {
+	vao.bind()
+	for attrID := uint32(0); attrID < vao.attributeSize; attrID++ {
+		gl.EnableVertexAttribArray(attrID)
+	}
+}
+
+func (vao *VAO) unuse() {
+	for attrID := uint32(0); attrID < vao.attributeSize; attrID++ {
+		gl.DisableVertexAttribArray(attrID)
+	}
+	vao.unbind()
+}
+
 func (vao *VAO) bind() {
 	gl.BindVertexArray(vao.id)
 }

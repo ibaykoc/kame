@@ -275,7 +275,6 @@ func newInput(glfwWindow *glfw.Window) Input {
 	ks[KeyLast] = Release
 
 	mX, mY := glfwWindow.GetCursorPos()
-	glfwWindow.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 	return Input{
 		keyStats:   ks,
 		glfwWindow: glfwWindow,

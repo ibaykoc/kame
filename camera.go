@@ -19,7 +19,7 @@ type Camera struct {
 	roll  float32
 }
 
-func CreateCamera() Camera {
+func createCamera() Camera {
 	c := Camera{
 		position: mgl.Vec3{0, 0, 10},
 		front:    mgl.Vec3{0, 0, -1},
