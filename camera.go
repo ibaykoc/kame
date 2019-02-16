@@ -22,7 +22,7 @@ type Camera struct {
 
 func createCamera(fov float32) Camera {
 	c := Camera{
-		position: mgl32.Vec3{0, 0, 2},
+		position: mgl32.Vec3{0, 0, 10},
 		front:    mgl32.Vec3{0, 0, -1},
 		worldUp:  mgl32.Vec3{0, 1, 0},
 		fov:      fov,
