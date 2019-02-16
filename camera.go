@@ -88,7 +88,12 @@ func (c *Camera) viewMatrix() mgl32.Mat4 {
 
 func (c *Camera) projectionMatrix() mgl32.Mat4 {
 	if c.projectionType == Orthographic {
-		return mgl32.Ortho(0, float32(window.width)/c.pixelPerUnit, -float32(window.height)/c.pixelPerUnit, 0, -100, 100)
+		return mgl32.Ortho(
+			-float32(window.width)/c.pixelPerUnit/2,
+			float32(window.width)/c.pixelPerUnit/2,
+			-float32(window.height)/c.pixelPerUnit/2,
+			float32(window.height)/c.pixelPerUnit/2,
+			-100, 100)
 	}
 	return mgl32.Perspective(c.fov, float32(window.width)/float32(window.height), 0.1, 100)
 }
