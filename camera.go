@@ -6,27 +6,48 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+type ProjectionType int
+
+const (
+	Orthographic ProjectionType = iota
+	Perspective
+)
+
 type Camera struct {
-	position mgl32.Vec3
-	front    mgl32.Vec3
-	right    mgl32.Vec3
-	up       mgl32.Vec3
-
-	worldUp mgl32.Vec3
-
-	fov   float32
-	pitch float32
-	yaw   float32
-	roll  float32
+	position       mgl32.Vec3
+	front          mgl32.Vec3
+	right          mgl32.Vec3
+	up             mgl32.Vec3
+	projectionType ProjectionType
+	worldUp        mgl32.Vec3
+	pixelPerUnit   float32
+	fov            float32
+	pitch          float32
+	yaw            float32
+	roll           float32
 }
 
-func createCamera(fov float32) Camera {
+func createCamera3D(fov float32) Camera {
 	c := Camera{
-		position: mgl32.Vec3{0, 0, 10},
-		front:    mgl32.Vec3{0, 0, -1},
-		worldUp:  mgl32.Vec3{0, 1, 0},
-		fov:      fov,
-		yaw:      270,
+		position:       mgl32.Vec3{0, 0, 10},
+		front:          mgl32.Vec3{0, 0, -1},
+		worldUp:        mgl32.Vec3{0, 1, 0},
+		fov:            fov,
+		yaw:            270,
+		projectionType: Perspective,
+	}
+	c.updateVectors()
+	return c
+}
+
+func createCamera2D(pixelPerUnit float32) Camera {
+	c := Camera{
+		position:       mgl32.Vec3{0, 0, 10},
+		front:          mgl32.Vec3{0, 0, -1},
+		worldUp:        mgl32.Vec3{0, 1, 0},
+		yaw:            270,
+		pixelPerUnit:   pixelPerUnit,
+		projectionType: Orthographic,
 	}
 	c.updateVectors()
 	return c
@@ -65,29 +86,40 @@ func (c *Camera) viewMatrix() mgl32.Mat4 {
 	)
 }
 
+func (c *Camera) projectionMatrix() mgl32.Mat4 {
+	if c.projectionType == Orthographic {
+		return mgl32.Ortho(0, float32(window.width)/c.pixelPerUnit, -float32(window.height)/c.pixelPerUnit, 0, -100, 100)
+	}
+	return mgl32.Perspective(c.fov, float32(window.width)/float32(window.height), 0.1, 100)
+}
+
 func (c *Camera) updateFPSControl(timeSinceLastFrame float32) {
 	moveSpeed := 0.05 * timeSinceLastFrame
 	rotateSensitivity := 0.5 * timeSinceLastFrame
 	input := window.input
-	moveXInput := float32(0)
-	moveZInput := float32(0)
+	moveHInput := float32(0)
+	moveVInput := float32(0)
 	if input.GetKeyStat(KeyLeftShift) == Press {
 		moveSpeed *= 5
 	}
 	if input.GetKeyStat(KeyW) == Press {
-		moveZInput++
+		moveVInput++
 	}
 	if input.GetKeyStat(KeyS) == Press {
-		moveZInput--
+		moveVInput--
 	}
 	if input.GetKeyStat(KeyD) == Press {
-		moveXInput++
+		moveHInput++
 	}
 	if input.GetKeyStat(KeyA) == Press {
-		moveXInput--
+		moveHInput--
 	}
-	mDX := input.MouseDeltaX * rotateSensitivity
-	mDY := input.MouseDeltaY * rotateSensitivity
-	c.Move(moveXInput*moveSpeed, 0, moveZInput*moveSpeed)
-	c.Rotate(-mDY, mDX, 0)
+	if c.projectionType == Perspective {
+		c.Move(moveHInput*moveSpeed, 0, moveVInput*moveSpeed)
+		mDX := input.MouseDeltaX * rotateSensitivity
+		mDY := input.MouseDeltaY * rotateSensitivity
+		c.Rotate(-mDY, mDX, 0)
+	} else {
+		c.Move(moveHInput*moveSpeed, moveVInput*moveSpeed, 0)
+	}
 }

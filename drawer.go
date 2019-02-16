@@ -14,7 +14,15 @@ type Drawer struct {
 	loadedTextureFile    map[string]uint32
 }
 
-func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
+func newDrawer2D(backgroundColor Color) (*Drawer, error) {
+	return newDrawer(Orthographic, backgroundColor)
+}
+
+func newDrawer3D(backgroundColor Color) (*Drawer, error) {
+	return newDrawer(Perspective, backgroundColor)
+}
+
+func newDrawer(cameraType ProjectionType, backgroundColor Color) (*Drawer, error) {
 	bgColor := backgroundColor
 	if err := gl.Init(); err != nil {
 		return nil, err
@@ -40,11 +48,16 @@ func newDrawer(window *Window, backgroundColor Color) (*Drawer, error) {
 			"hasTexture",
 		},
 	)
-	camera := createCamera(mgl32.DegToRad(90))
+	var camera Camera
+	if cameraType == Orthographic {
+		camera = createCamera2D(100)
+	} else {
+		camera = createCamera3D(mgl32.DegToRad(90))
+	}
 
 	defaultShaderProgram.Start()
 	defaultShaderProgram.SetUniformMat4F("v", camera.viewMatrix())
-	defaultShaderProgram.SetUniformMat4F("p", mgl32.Perspective(camera.fov, float32(window.width)/float32(window.height), 0.1, 100))
+	defaultShaderProgram.SetUniformMat4F("p", camera.projectionMatrix())
 	defaultShaderProgram.SetUniform1i("defaultTexture", 0)
 	defaultShaderProgram.SetUniform1i("userDefinedTexture0", 1)
 	defaultShaderProgram.Stop()
@@ -100,7 +113,7 @@ func (d *Drawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
 }
 func (d *Drawer) changeSize(width int32, height int32) {
 	d.defaultShaderProgram.Start()
-	d.defaultShaderProgram.SetUniformMat4F("p", mgl32.Perspective(d.camera.fov, float32(width)/float32(height), 0.1, 100))
+	d.defaultShaderProgram.SetUniformMat4F("p", d.camera.projectionMatrix())
 	d.defaultShaderProgram.Stop()
 	gl.Viewport(0, 0, width, height)
 }
