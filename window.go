@@ -13,7 +13,7 @@ import (
 )
 
 type updateFunc func(timeSinceLastFrame float32)
-type drawFunc func(drawer *Drawer)
+type drawFunc func(drawer *KDrawer)
 type onDropFileFunc func(filePath string)
 
 // Window for kame
@@ -30,7 +30,7 @@ type Window struct {
 	OnSizeChange                  func(newWidth int, newHeight int)
 	lastFrameStartTime            time.Time
 	glfwWindow                    *glfw.Window
-	drawer                        *Drawer
+	kdrawer                       *KDrawer
 	cameraFPSControlEnabled       bool
 	isFullScreen                  bool
 	windowedHeight, windowedWidth int
@@ -52,7 +52,7 @@ type WindowConfig struct {
 	BackgroundColor Color
 }
 
-func createWindow(config WindowConfig, updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
+func createWindow(config WindowConfig) (*Window, error) {
 	if !hasInitialized {
 		return nil, errors.New("Kame should be initialized first")
 	}
@@ -107,8 +107,6 @@ func createWindow(config WindowConfig, updateFunc updateFunc, drawFunc drawFunc)
 		width:                   config.Width,
 		height:                  config.Height,
 		targetFps:               config.TargetFPS,
-		updateFunc:              updateFunc,
-		drawFunc:                drawFunc,
 		lastFrameStartTime:      time.Now(),
 		glfwWindow:              glfwWindow,
 		isFullScreen:            config.Fullscreen,
@@ -159,7 +157,7 @@ func (w *Window) DoMagic() {
 	w.WannaClose = w.glfwWindow.ShouldClose()
 
 	if w.cameraFPSControlEnabled {
-		w.drawer.camera.updateFPSControl(dt)
+		w.kdrawer.camera.updateFPSControl(dt)
 	}
 
 	// Do update
@@ -167,9 +165,9 @@ func (w *Window) DoMagic() {
 		w.updateFunc(dt)
 	}
 	// Do draw
-	w.drawer.clear()
+	w.kdrawer.clear()
 	if !w.hasClose {
-		w.drawFunc(w.drawer)
+		w.drawFunc(w.kdrawer)
 	}
 	if w.hasClose {
 		return
@@ -244,7 +242,7 @@ func (w *Window) Close() {
 	}
 	w.WannaClose = true
 	w.hasClose = true
-	w.drawer.dispose()
+	w.kdrawer.dispose()
 	w.glfwWindow.Destroy()
 }
 

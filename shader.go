@@ -32,6 +32,9 @@ const (
 		vec4 defaultTextureColor = texture(defaultTexture, UV);
 		vec4 userDefinedTexture0Color = texture(userDefinedTexture0, UV);
 		color = mix(defaultTextureColor, userDefinedTexture0Color, hasTexture);
+		if (color.a == 0.0){
+			discard;
+		}
 		// color = vec4(hasTexture,0,0,1);
 	}`
 )

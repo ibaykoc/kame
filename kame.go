@@ -15,10 +15,7 @@ import (
 var hasInitialized = false
 var window *Window
 
-// TurnOn needs update & draw function that will be called every frame sequentially
-// and returns Window and also error if something goes wrong.
-// And finally, don't forget to Turn Off
-// Have Fun <3
+// TurnOn2D Create 2D World PPU (Pixel Per Unit: 50), (0,0) at center
 func TurnOn2D(updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
 	return TurnOn(WindowConfig{
 		Title:           "KAME 2D",
@@ -29,6 +26,28 @@ func TurnOn2D(updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
 		BackgroundColor: Color{0.5, 0.5, 0.5, 1},
 		CameraType:      Orthographic,
 	}, updateFunc, drawFunc)
+}
+
+func GameOn2D(scenes []Scene) (*GameWindow, error) {
+	gw := &GameWindow{}
+	w, err := TurnOn2D(gw.update, gw.draw)
+	if err != nil {
+		return nil, err
+	}
+	gw.Window = w
+	gw.initialize(scenes)
+	return gw, nil
+}
+
+func GameOn3D(scenes []Scene) (*GameWindow, error) {
+	gw := &GameWindow{}
+	w, err := TurnOn3D(gw.update, gw.draw)
+	if err != nil {
+		return nil, err
+	}
+	gw.Window = w
+	gw.initialize(scenes)
+	return gw, nil
 }
 
 func TurnOn3D(updateFunc updateFunc, drawFunc drawFunc) (*Window, error) {
@@ -53,11 +72,11 @@ func TurnOn(config WindowConfig, updateFunc updateFunc, drawFunc drawFunc) (*Win
 	}
 	hasInitialized = true
 	var err error
-	window, err = createWindow(config, updateFunc, drawFunc)
+	window, err = createWindow(config)
 	if err != nil {
 		return nil, err
 	}
-	var d *Drawer
+	var d *KDrawer
 
 	if config.CameraType == Perspective {
 		d, err = newDrawer3D(config.BackgroundColor)
@@ -67,11 +86,11 @@ func TurnOn(config WindowConfig, updateFunc updateFunc, drawFunc drawFunc) (*Win
 	if err != nil {
 		panic(err)
 	}
-	window.drawer = d
+	window.kdrawer = d
 	window.glfwWindow.SetSizeCallback(func(w *glfw.Window, width int, height int) {
 		window.width = width
 		window.height = height
-		window.drawer.changeSize(int32(width), int32(height))
+		window.kdrawer.changeSize(int32(width), int32(height))
 		if window.OnSizeChange != nil {
 			window.OnSizeChange(width, height)
 		}
@@ -94,6 +113,8 @@ func TurnOn(config WindowConfig, updateFunc updateFunc, drawFunc drawFunc) (*Win
 			}
 		}
 	})
+	window.updateFunc = updateFunc
+	window.drawFunc = drawFunc
 	fmt.Println("kame Turned On")
 	return window, nil
 }

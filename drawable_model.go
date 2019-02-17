@@ -30,11 +30,11 @@ type DrawableModel struct {
 
 func (dm *DrawableModel) startDraw() {
 	if len(dm.textureIDs) <= 0 {
-		window.drawer.defaultShaderProgram.SetUniform1F("hasTexture", 0.0)
+		window.kdrawer.defaultShaderProgram.SetUniform1F("hasTexture", 0.0)
 		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, window.drawer.defaultShaderProgram.defaultTextureID)
+		gl.BindTexture(gl.TEXTURE_2D, window.kdrawer.defaultShaderProgram.defaultTextureID)
 	} else {
-		window.drawer.defaultShaderProgram.SetUniform1F("hasTexture", 1.0)
+		window.kdrawer.defaultShaderProgram.SetUniform1F("hasTexture", 1.0)
 		for i := uint32(0); i < uint32(len(dm.textureIDs)); i++ {
 			gl.ActiveTexture(gl.TEXTURE1 + i)
 			gl.BindTexture(gl.TEXTURE_2D, dm.textureIDs[i])
@@ -45,7 +45,7 @@ func (dm *DrawableModel) startDraw() {
 
 // LoadTextureFile load texture file into drawable model
 func (dm *DrawableModel) loadTextureFile(path string) error {
-	loadedTexture, textureLoaded := window.drawer.loadedTextureFile[path]
+	loadedTexture, textureLoaded := window.kdrawer.loadedTextureFile[path]
 	if textureLoaded {
 		dm.textureIDs = append(dm.textureIDs, loadedTexture)
 		return nil
@@ -54,7 +54,7 @@ func (dm *DrawableModel) loadTextureFile(path string) error {
 	if err != nil {
 		return err
 	}
-	window.drawer.loadedTextureFile[path] = textureID
+	window.kdrawer.loadedTextureFile[path] = textureID
 	dm.textureIDs = append(dm.textureIDs, textureID)
 	return nil
 }
@@ -62,7 +62,7 @@ func (dm *DrawableModel) loadTextureFile(path string) error {
 func (dm *DrawableModel) stopDraw() {
 	dm.vao.unuse()
 	if len(dm.textureIDs) > 0 {
-		window.drawer.defaultShaderProgram.SetUniform1F("hasTexture", 0.0)
+		window.kdrawer.defaultShaderProgram.SetUniform1F("hasTexture", 0.0)
 		for i := uint32(1); i < uint32(len(dm.textureIDs)); i++ {
 			gl.ActiveTexture(gl.TEXTURE1 + i)
 			gl.BindTexture(gl.TEXTURE_2D, 0)

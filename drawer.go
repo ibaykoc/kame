@@ -6,23 +6,23 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-// Drawer to draw something onto the screen
-type Drawer struct {
+// KDrawer to draw something onto the screen
+type KDrawer struct {
 	BackgroundColor      Color
 	camera               Camera
 	defaultShaderProgram ShaderProgram
 	loadedTextureFile    map[string]uint32
 }
 
-func newDrawer2D(backgroundColor Color) (*Drawer, error) {
+func newDrawer2D(backgroundColor Color) (*KDrawer, error) {
 	return newDrawer(Orthographic, backgroundColor)
 }
 
-func newDrawer3D(backgroundColor Color) (*Drawer, error) {
+func newDrawer3D(backgroundColor Color) (*KDrawer, error) {
 	return newDrawer(Perspective, backgroundColor)
 }
 
-func newDrawer(cameraType ProjectionType, backgroundColor Color) (*Drawer, error) {
+func newDrawer(cameraType ProjectionType, backgroundColor Color) (*KDrawer, error) {
 	bgColor := backgroundColor
 	if err := gl.Init(); err != nil {
 		return nil, err
@@ -30,7 +30,6 @@ func newDrawer(cameraType ProjectionType, backgroundColor Color) (*Drawer, error
 	// Enable alpha blending
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
 	gl.Enable(gl.DEPTH_TEST)
 	gl.Enable(gl.CULL_FACE)
 	// version := gl.GoStr(gl.GetString(gl.VERSION))
@@ -50,7 +49,7 @@ func newDrawer(cameraType ProjectionType, backgroundColor Color) (*Drawer, error
 	)
 	var camera Camera
 	if cameraType == Orthographic {
-		camera = createCamera2D(100)
+		camera = createCamera2D(50)
 	} else {
 		camera = createCamera3D(mgl32.DegToRad(90))
 	}
@@ -68,7 +67,7 @@ func newDrawer(cameraType ProjectionType, backgroundColor Color) (*Drawer, error
 		bgColor.B,
 		bgColor.A)
 
-	return &Drawer{
+	return &KDrawer{
 		BackgroundColor:      bgColor,
 		defaultShaderProgram: defaultShaderProgram,
 		camera:               camera,
@@ -76,33 +75,33 @@ func newDrawer(cameraType ProjectionType, backgroundColor Color) (*Drawer, error
 	}, nil
 }
 
-func (d *Drawer) MoveCameraRelative(x, y, z float32) {
+func (d *KDrawer) MoveCameraRelative(x, y, z float32) {
 	d.camera.Move(x, y, z)
 	d.defaultShaderProgram.Start()
 	d.defaultShaderProgram.SetUniformMat4F("v", d.camera.viewMatrix())
 	d.defaultShaderProgram.Stop()
 }
 
-func (d *Drawer) clear() {
+func (d *KDrawer) clear() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
 // Draw draw model at default position
-func (d *Drawer) Draw(dm DrawableModel) {
+func (d *KDrawer) Draw(dm DrawableModel) {
 	d.DrawAt(dm, mgl32.Translate3D(0, 0, 0))
 }
 
 // Draw0 draw model at specified position
-func (d *Drawer) DrawAtPosition(dm DrawableModel, position mgl32.Vec3) {
+func (d *KDrawer) DrawAtPosition(dm DrawableModel, position mgl32.Vec3) {
 	d.DrawAt(dm, mgl32.Translate3D(position.Elem()))
 }
 
-func (d *Drawer) DrawAtRotation(dm DrawableModel, rotation mgl32.Vec3) {
+func (d *KDrawer) DrawAtRotation(dm DrawableModel, rotation mgl32.Vec3) {
 	rValue := rotation.Len()
 	rAxis := rotation.Normalize()
 	d.DrawAt(dm, mgl32.Translate3D(0, 0, 0).Mul4(mgl32.HomogRotate3D(rValue, rAxis)))
 }
-func (d *Drawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
+func (d *KDrawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
 	d.defaultShaderProgram.Start()
 	d.defaultShaderProgram.SetUniformMat4F("v", d.camera.viewMatrix())
 	d.defaultShaderProgram.SetUniformMat4F("m", translation)
@@ -111,14 +110,14 @@ func (d *Drawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
 	dm.stopDraw()
 	d.defaultShaderProgram.Stop()
 }
-func (d *Drawer) changeSize(width int32, height int32) {
+func (d *KDrawer) changeSize(width int32, height int32) {
 	d.defaultShaderProgram.Start()
 	d.defaultShaderProgram.SetUniformMat4F("p", d.camera.projectionMatrix())
 	d.defaultShaderProgram.Stop()
 	gl.Viewport(0, 0, width, height)
 }
 
-func (d *Drawer) dispose() {
+func (d *KDrawer) dispose() {
 	d.defaultShaderProgram.Dispose()
 	for _, textureID := range d.loadedTextureFile {
 		gl.DeleteTextures(1, &textureID)
