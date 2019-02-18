@@ -14,8 +14,10 @@ type GameWindow struct {
 func (gw *GameWindow) initialize(scenes []Scene) {
 	gw.currentSceneIndex = 0
 	gw.scenes = scenes
-	currentScene := gw.scenes[gw.currentSceneIndex]
+}
 
+func (gw *GameWindow) Start() {
+	currentScene := gw.scenes[gw.currentSceneIndex]
 	currentScene.CreateProcessorSystems()
 	currentScene.CreateDrawerSystems()
 	sceneProcessorSystems := currentScene.GetProcessorSystems()
@@ -46,7 +48,6 @@ func (gw *GameWindow) initialize(scenes []Scene) {
 			}
 		}
 	}
-
 }
 
 func (gw *GameWindow) update(timeSinceLastFrame float32) {
