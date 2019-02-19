@@ -5,14 +5,19 @@ type EntitiesCreator interface {
 }
 
 type EntitiesOwner interface {
-	GetEntities() *[]Entity
+	GetEntityPointers() []*Entity
 }
+
+type EntitiesRemoveListener interface {
+	OnRemoveEntities(entityIDs []int)
+}
+
 type ProcessorSystemsCreator interface {
 	CreateProcessorSystems()
 }
 
 type ProcessorSystemsOwner interface {
-	GetProcessorSystems() *[]ProcessorSystem
+	GetProcessorSystemPointers() []*ProcessorSystem
 }
 
 type DrawerSystemsCreator interface {
@@ -20,12 +25,13 @@ type DrawerSystemsCreator interface {
 }
 
 type DrawerSystemsOwner interface {
-	GetDrawerSystems() *[]DrawerSystem
+	GetDrawerSystemPointers() []*DrawerSystem
 }
 
 type Scene interface {
 	EntitiesCreator
 	EntitiesOwner
+	EntitiesRemoveListener
 	DrawerSystemsCreator
 	DrawerSystemsOwner
 	ProcessorSystemsCreator

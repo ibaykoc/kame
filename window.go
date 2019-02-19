@@ -169,6 +169,8 @@ func (w *Window) DoMagic() {
 	if !w.hasClose {
 		w.drawFunc(w.kdrawer)
 	}
+	w.kdrawer.applyDraw()
+
 	if w.hasClose {
 		return
 	}
@@ -248,4 +250,8 @@ func (w *Window) Close() {
 
 func (w *Window) GetInput() Input {
 	return w.input
+}
+
+func (w Window) GetCameraFrustum() Frustum {
+	return w.kdrawer.camera.getFrustum()
 }

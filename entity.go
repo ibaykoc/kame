@@ -5,7 +5,7 @@ type ComponentsCreator interface {
 }
 
 type ComponentsOwner interface {
-	GetComponents() *[]Component
+	GetComponentPointers() []*Component
 }
 
 type IDReceiver interface {

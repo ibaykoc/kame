@@ -29,10 +29,10 @@ func newVertex() Vertex {
 	return Vertex{}
 }
 
-func LoadOBJ(filePath string, texturePath string) (DrawableModel, error) {
+func LoadOBJ(filePath string, texturePath string) (DrawableModelID, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return DrawableModel{}, err
+		return -1, err
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -113,7 +113,7 @@ func LoadOBJ(filePath string, texturePath string) (DrawableModel, error) {
 	positionData := make([]float32, len(faceToElement)*3)
 	var uvData []float32
 	var normalData []float32
-
+	var model drawableModel
 	if hasUV {
 		uvData = make([]float32, len(faceToElement)*2)
 	}
@@ -140,28 +140,31 @@ func LoadOBJ(filePath string, texturePath string) (DrawableModel, error) {
 		}
 	}
 
-	var model DrawableModel
 	if hasUV && hasNormal {
-		model, err = CreateDrawableModel3T(
+		model, err = newDrawableModel3(
 			positionData,
 			uvData,
 			normalData,
 			elements,
-			texturePath,
 		)
 	} else if hasUV && !hasNormal {
-		model, err = CreateDrawableModel1T(positionData, uvData, elements, texturePath)
+		model, err = newDrawableModel1(positionData, uvData, elements)
 	} else if !hasUV && hasNormal {
 		fmt.Printf("OBJ: %s has no UV data, ignoring texture\n", filePath)
-		model, err = CreateDrawableModel2(positionData, normalData, elements)
+		model, err = newDrawableModel2(
+			positionData,
+			normalData,
+			elements)
 	} else {
 		fmt.Printf("OBJ: %s has no UV data, ignoring texture\n", filePath)
-		model, err = CreateDrawableModel0(positionData, elements)
+		model, err = newDrawableModel0(positionData, elements)
 	}
 	if err != nil {
-		return DrawableModel{}, err
+		return -1, err
 	}
-	return model, nil
+	model.loadTextureFile(texturePath)
+	modelID := window.kdrawer.storeModel(model)
+	return modelID, nil
 }
 
 func panciCheck(err error) {

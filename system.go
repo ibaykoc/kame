@@ -38,6 +38,7 @@ type System interface {
 	EntityFilterSetsCreator
 	EntityFilterSetsOwner
 	MatchEntityListener
+	EntitiesRemoveListener
 }
 
 type ProcessorSystem interface {

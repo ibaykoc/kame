@@ -12,6 +12,8 @@ type KDrawer struct {
 	camera               Camera
 	defaultShaderProgram ShaderProgram
 	loadedTextureFile    map[string]uint32
+	batch                map[int][]mgl32.Mat4 //DrawableModelID to Translate
+	models               map[int]*drawableModel
 }
 
 func newDrawer2D(backgroundColor Color) (*KDrawer, error) {
@@ -72,6 +74,8 @@ func newDrawer(cameraType ProjectionType, backgroundColor Color) (*KDrawer, erro
 		defaultShaderProgram: defaultShaderProgram,
 		camera:               camera,
 		loadedTextureFile:    make(map[string]uint32),
+		batch:                make(map[int][]mgl32.Mat4),
+		models:               make(map[int]*drawableModel),
 	}, nil
 }
 
@@ -87,29 +91,46 @@ func (d *KDrawer) clear() {
 }
 
 // Draw draw model at default position
-func (d *KDrawer) Draw(dm DrawableModel) {
-	d.DrawAt(dm, mgl32.Translate3D(0, 0, 0))
+func (d *KDrawer) Draw(id DrawableModelID) {
+	d.DrawAt(id, mgl32.Translate3D(0, 0, 0))
 }
 
 // Draw0 draw model at specified position
-func (d *KDrawer) DrawAtPosition(dm DrawableModel, position mgl32.Vec3) {
-	d.DrawAt(dm, mgl32.Translate3D(position.Elem()))
+func (d *KDrawer) DrawAtPosition(id DrawableModelID, position mgl32.Vec3) {
+	d.DrawAt(id, mgl32.Translate3D(position.Elem()))
 }
 
-func (d *KDrawer) DrawAtRotation(dm DrawableModel, rotation mgl32.Vec3) {
+func (d *KDrawer) DrawAtRotation(id DrawableModelID, rotation mgl32.Vec3) {
 	rValue := rotation.Len()
 	rAxis := rotation.Normalize()
-	d.DrawAt(dm, mgl32.Translate3D(0, 0, 0).Mul4(mgl32.HomogRotate3D(rValue, rAxis)))
+	d.DrawAt(id, mgl32.Translate3D(0, 0, 0).Mul4(mgl32.HomogRotate3D(rValue, rAxis)))
 }
-func (d *KDrawer) DrawAt(dm DrawableModel, translation mgl32.Mat4) {
+func (d *KDrawer) DrawAt(id DrawableModelID, translation mgl32.Mat4) {
+	dID := int(id)
+	if _, found := d.batch[dID]; !found {
+		d.batch[dID] = []mgl32.Mat4{translation}
+	}
+	d.batch[dID] = append(d.batch[dID], translation)
+}
+
+func (d *KDrawer) applyDraw() {
 	d.defaultShaderProgram.Start()
 	d.defaultShaderProgram.SetUniformMat4F("v", d.camera.viewMatrix())
-	d.defaultShaderProgram.SetUniformMat4F("m", translation)
-	dm.startDraw()
-	gl.DrawElements(gl.TRIANGLES, dm.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
-	dm.stopDraw()
+
+	for dmID, trans := range d.batch {
+		dm := d.models[dmID]
+		dm.startDraw()
+		for _, t := range trans {
+			d.defaultShaderProgram.SetUniformMat4F("m", t)
+			gl.DrawElements(gl.TRIANGLES, dm.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
+		}
+		dm.stopDraw()
+		delete(d.batch, dmID)
+	}
+
 	d.defaultShaderProgram.Stop()
 }
+
 func (d *KDrawer) changeSize(width int32, height int32) {
 	d.defaultShaderProgram.Start()
 	d.defaultShaderProgram.SetUniformMat4F("p", d.camera.projectionMatrix())
@@ -122,4 +143,10 @@ func (d *KDrawer) dispose() {
 	for _, textureID := range d.loadedTextureFile {
 		gl.DeleteTextures(1, &textureID)
 	}
+}
+
+func (d *KDrawer) storeModel(dm drawableModel) DrawableModelID {
+	modelID := len(d.models)
+	d.models[modelID] = &dm
+	return DrawableModelID(modelID)
 }

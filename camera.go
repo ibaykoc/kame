@@ -17,6 +17,8 @@ type Camera struct {
 	position       mgl32.Vec3
 	front          mgl32.Vec3
 	right          mgl32.Vec3
+	near           float32
+	far            float32
 	up             mgl32.Vec3
 	projectionType ProjectionType
 	worldUp        mgl32.Vec3
@@ -27,6 +29,11 @@ type Camera struct {
 	roll           float32
 }
 
+type Frustum struct {
+	NearPlane Rect
+	FarPlane  Rect
+}
+
 func createCamera3D(fov float32) Camera {
 	c := Camera{
 		position:       mgl32.Vec3{0, 0, 10},
@@ -34,6 +41,8 @@ func createCamera3D(fov float32) Camera {
 		worldUp:        mgl32.Vec3{0, 1, 0},
 		fov:            fov,
 		yaw:            270,
+		near:           0.1,
+		far:            100,
 		projectionType: Perspective,
 	}
 	c.updateVectors()
@@ -46,6 +55,8 @@ func createCamera2D(pixelPerUnit float32) Camera {
 		front:          mgl32.Vec3{0, 0, -1},
 		worldUp:        mgl32.Vec3{0, 1, 0},
 		yaw:            270,
+		near:           0.1,
+		far:            100,
 		pixelPerUnit:   pixelPerUnit,
 		projectionType: Orthographic,
 	}
@@ -93,9 +104,9 @@ func (c *Camera) projectionMatrix() mgl32.Mat4 {
 			float32(window.width)/c.pixelPerUnit/2,
 			-float32(window.height)/c.pixelPerUnit/2,
 			float32(window.height)/c.pixelPerUnit/2,
-			-100, 100)
+			c.near, c.far)
 	}
-	return mgl32.Perspective(c.fov, float32(window.width)/float32(window.height), 0.1, 100)
+	return mgl32.Perspective(c.fov, float32(window.width)/float32(window.height), c.near, c.far)
 }
 
 func (c *Camera) updateFPSControl(timeSinceLastFrame float32) {
@@ -127,4 +138,26 @@ func (c *Camera) updateFPSControl(timeSinceLastFrame float32) {
 	} else {
 		c.Move(moveHInput*moveSpeed, moveVInput*moveSpeed, 0)
 	}
+}
+
+func (c Camera) getFrustum() Frustum {
+	var f Frustum
+	switch p := c.projectionType; p {
+	case Orthographic:
+		left := c.position.X() - float32(window.width)/c.pixelPerUnit/2
+		right := c.position.X() + float32(window.width)/c.pixelPerUnit/2
+		top := c.position.Y() - float32(window.height)/c.pixelPerUnit/2
+		bottom := c.position.Y() + float32(window.height)/c.pixelPerUnit/2
+		nearRect := Rect{
+			Min: mgl32.Vec3{left, top, c.near},
+			Max: mgl32.Vec3{right, bottom, c.near},
+		}
+		farRect := Rect{
+			Min: mgl32.Vec3{left, top, c.far},
+			Max: mgl32.Vec3{right, bottom, c.far},
+		}
+		f.NearPlane = nearRect
+		f.FarPlane = farRect
+	}
+	return f
 }

@@ -2,11 +2,13 @@ package kame
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
 type MeshType int
+type DrawableModelID int
 
 const (
 	Triangle MeshType = iota
@@ -22,32 +24,42 @@ const (
 	drawableDataComponentElements
 )
 
-type DrawableModel struct {
+type drawableModel struct {
 	vao         VAO
-	textureIDs  []uint32
+	textureID   uint32
 	elementSize int32
 }
 
-func (dm *DrawableModel) startDraw() {
-	if len(dm.textureIDs) <= 0 {
+func newDrawableModel(vbo VBO, ebo []uint32) drawableModel {
+	fmt.Printf("Create new drawable model\n")
+	vao := createVAO()
+	vao.storeVBO(vbo)
+	vao.storeEBO(ebo)
+	return drawableModel{
+		vao:         vao,
+		textureID:   math.MaxUint32,
+		elementSize: int32(len(ebo)),
+	}
+}
+
+func (dm *drawableModel) startDraw() {
+	if dm.textureID == math.MaxUint32 {
 		window.kdrawer.defaultShaderProgram.SetUniform1F("hasTexture", 0.0)
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, window.kdrawer.defaultShaderProgram.defaultTextureID)
 	} else {
 		window.kdrawer.defaultShaderProgram.SetUniform1F("hasTexture", 1.0)
-		for i := uint32(0); i < uint32(len(dm.textureIDs)); i++ {
-			gl.ActiveTexture(gl.TEXTURE1 + i)
-			gl.BindTexture(gl.TEXTURE_2D, dm.textureIDs[i])
-		}
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, dm.textureID)
 	}
 	dm.vao.use()
 }
 
 // LoadTextureFile load texture file into drawable model
-func (dm *DrawableModel) loadTextureFile(path string) error {
+func (dm *drawableModel) loadTextureFile(path string) error {
 	loadedTexture, textureLoaded := window.kdrawer.loadedTextureFile[path]
 	if textureLoaded {
-		dm.textureIDs = append(dm.textureIDs, loadedTexture)
+		dm.textureID = loadedTexture
 		return nil
 	}
 	textureID, err := loadTextureFile(path)
@@ -55,23 +67,21 @@ func (dm *DrawableModel) loadTextureFile(path string) error {
 		return err
 	}
 	window.kdrawer.loadedTextureFile[path] = textureID
-	dm.textureIDs = append(dm.textureIDs, textureID)
+	dm.textureID = textureID
 	return nil
 }
 
-func (dm *DrawableModel) stopDraw() {
+func (dm *drawableModel) stopDraw() {
 	dm.vao.unuse()
-	if len(dm.textureIDs) > 0 {
+	if dm.textureID != math.MaxUint32 {
 		window.kdrawer.defaultShaderProgram.SetUniform1F("hasTexture", 0.0)
-		for i := uint32(1); i < uint32(len(dm.textureIDs)); i++ {
-			gl.ActiveTexture(gl.TEXTURE1 + i)
-			gl.BindTexture(gl.TEXTURE_2D, 0)
-		}
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, 0)
 	}
 }
 
 // CreateDrawableModel create drawable model with built in mesh
-func CreateDrawableModel(meshType MeshType) DrawableModel {
+func newBuiltInDrawableModel(meshType MeshType) drawableModel {
 	var positions []float32
 	var uvs []float32
 	var elements []uint32
@@ -116,7 +126,8 @@ func CreateDrawableModel(meshType MeshType) DrawableModel {
 			0, 3, 1,
 		}
 	}
-	model, err := CreateDrawableModel1(positions, uvs, elements)
+
+	model, err := newDrawableModel1(positions, uvs, elements)
 	if err != nil {
 		panic(err)
 	}
@@ -124,29 +135,29 @@ func CreateDrawableModel(meshType MeshType) DrawableModel {
 }
 
 // CreateDrawableModelT create drawable model with built in mesh and defined texture
-func CreateDrawableModelT(meshType MeshType, texturePath string) (DrawableModel, error) {
-	dm := CreateDrawableModel(meshType)
+func CreateBuiltInDrawableModelT(meshType MeshType, texturePath string) (DrawableModelID, error) {
+	dm := newBuiltInDrawableModel(meshType)
 	if err := dm.loadTextureFile(texturePath); err != nil {
-		return DrawableModel{}, err
+		return -1, err
 	}
-	return dm, nil
+	dmID := window.kdrawer.storeModel(dm)
+	return dmID, nil
 }
 
 // CreateDrawableModel0 creates drawable models with position data
-func CreateDrawableModel0(positions []float32, elements []uint32) (DrawableModel, error) {
+func newDrawableModel0(positions []float32, elements []uint32) (drawableModel, error) {
 	// positions data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentPosition, len(positions)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	// elements data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentElements, len(elements)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	perVertexDataCount := int32(3)
 	data := positions
-	vao := createVAO()
 	vbo := createFloat32VBO(perVertexDataCount,
 		[]VBOData{
 			// Pos
@@ -156,36 +167,30 @@ func CreateDrawableModel0(positions []float32, elements []uint32) (DrawableModel
 			},
 		},
 		data)
-	vao.storeVBO(vbo)
-	vao.storeEBO(elements)
-	return DrawableModel{
-		vao:         vao,
-		textureIDs:  []uint32{},
-		elementSize: int32(len(elements)),
-	}, nil
+	return newDrawableModel(vbo, elements), nil
+
 }
 
 // CreateDrawableModel1 creates drawable models with position, and UV data
-func CreateDrawableModel1(positions []float32, uvs []float32, elements []uint32) (DrawableModel, error) {
+func newDrawableModel1(positions []float32, uvs []float32, elements []uint32) (drawableModel, error) {
 	{ //Validation
 		// positions data validation
 		if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentPosition, len(positions)); foundErr {
-			return DrawableModel{}, err
+			return drawableModel{}, err
 		}
 
 		// uvs data validation
 		if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentUV, len(uvs)); foundErr {
-			return DrawableModel{}, err
+			return drawableModel{}, err
 		}
 		if foundErr, err := validateVertexDataMatchToPosition(drawableDataComponentUV, uvs, positions); foundErr {
-			return DrawableModel{}, err
+			return drawableModel{}, err
 		}
 
 		// indices data validation
 		if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentElements, len(elements)); foundErr {
-			return DrawableModel{}, err
+			return drawableModel{}, err
 		}
-		//#endregion
 	}
 
 	perVertexDataCount := int32(5)
@@ -202,7 +207,6 @@ func CreateDrawableModel1(positions []float32, uvs []float32, elements []uint32)
 		data[dataI+3] = uvs[uvI]
 		data[dataI+4] = uvs[uvI+1]
 	}
-	vao := createVAO()
 	vbo := createFloat32VBO(perVertexDataCount,
 		[]VBOData{
 			// Pos
@@ -217,45 +221,27 @@ func CreateDrawableModel1(positions []float32, uvs []float32, elements []uint32)
 			},
 		},
 		data)
-	vao.storeVBO(vbo)
-	vao.storeEBO(elements)
-	return DrawableModel{
-		vao:         vao,
-		textureIDs:  []uint32{},
-		elementSize: int32(len(elements)),
-	}, nil
-}
-
-// CreateDrawableModel1T creates drawable models with position, UV, and texture data
-func CreateDrawableModel1T(positions []float32, uvs []float32, elements []uint32, texturePath string) (DrawableModel, error) {
-	dm, err := CreateDrawableModel1(positions, uvs, elements)
-	if err != nil {
-		return DrawableModel{}, nil
-	}
-	if err := dm.loadTextureFile(texturePath); err != nil {
-		return DrawableModel{}, err
-	}
-	return dm, nil
+	return newDrawableModel(vbo, elements), nil
 }
 
 // CreateDrawableModel2 creates drawable models with position, and normal data
-func CreateDrawableModel2(positions []float32, normals []float32, elements []uint32) (DrawableModel, error) {
+func newDrawableModel2(positions []float32, normals []float32, elements []uint32) (drawableModel, error) {
 	// positions data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentPosition, len(positions)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	// normals data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentNormal, len(normals)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 	if foundErr, err := validateVertexDataMatchToPosition(drawableDataComponentNormal, normals, positions); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	// indices data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentElements, len(elements)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 	perVertexDataCount := int32(6)
 	data := make([]float32, len(positions)+len(normals))
@@ -272,9 +258,6 @@ func CreateDrawableModel2(positions []float32, normals []float32, elements []uin
 		data[dataI+4] = normals[normalI+1]
 		data[dataI+5] = normals[normalI+2]
 	}
-
-	vao := createVAO()
-
 	vbo := createFloat32VBO(perVertexDataCount,
 		[]VBOData{
 			// Pos
@@ -289,43 +272,38 @@ func CreateDrawableModel2(positions []float32, normals []float32, elements []uin
 			},
 		},
 		data)
-	vao.storeVBO(vbo)
-	vao.storeEBO(elements)
 
-	return DrawableModel{
-		vao:         vao,
-		textureIDs:  []uint32{},
-		elementSize: int32(len(elements)),
-	}, nil
+	return newDrawableModel(vbo, elements), nil
 }
 
-// CreateDrawableModel2 creates drawable models with position, UV, and normal data
-func CreateDrawableModel3(positions []float32, uvs []float32, normals []float32, elements []uint32) (DrawableModel, error) {
+// newDrawableModel3 creates drawable models with position, UV, and normal data
+func newDrawableModel3(positions []float32, uvs []float32, normals []float32, elements []uint32) (drawableModel, error) {
 	// positions data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentPosition, len(positions)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	// uvs data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentUV, len(uvs)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 	if foundErr, err := validateVertexDataMatchToPosition(drawableDataComponentUV, uvs, positions); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	// normals data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentNormal, len(normals)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 	if foundErr, err := validateVertexDataMatchToPosition(drawableDataComponentNormal, normals, positions); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
 
 	// indices data validation
 	if foundErr, err := validateDrawableDataComponentLength(drawableDataComponentElements, len(elements)); foundErr {
-		return DrawableModel{}, err
+		return drawableModel{}, err
 	}
+
 	perVertexDataCount := int32(8)
 	data := make([]float32, len(positions)+len(uvs)+len(normals))
 	for i := 0; i < len(data)/int(perVertexDataCount); i++ {
@@ -346,8 +324,6 @@ func CreateDrawableModel3(positions []float32, uvs []float32, normals []float32,
 		data[dataI+7] = normals[normalI+2]
 	}
 
-	vao := createVAO()
-
 	vbo := createFloat32VBO(perVertexDataCount,
 		[]VBOData{
 			// Pos
@@ -367,30 +343,12 @@ func CreateDrawableModel3(positions []float32, uvs []float32, normals []float32,
 			},
 		},
 		data)
-	vao.storeVBO(vbo)
-	vao.storeEBO(elements)
 
-	return DrawableModel{
-		vao:         vao,
-		textureIDs:  []uint32{},
-		elementSize: int32(len(elements)),
-	}, nil
-}
-
-// CreateDrawableModel2T creates drawable models with position, UV, normal, and texture data
-func CreateDrawableModel3T(positions []float32, uvs []float32, normals []float32, elements []uint32, texturePath string) (DrawableModel, error) {
-	dm, err := CreateDrawableModel3(positions, uvs, normals, elements)
-	if err != nil {
-		return DrawableModel{}, nil
-	}
-	if err := dm.loadTextureFile(texturePath); err != nil {
-		return DrawableModel{}, err
-	}
-	return dm, nil
+	return newDrawableModel(vbo, elements), nil
 }
 
 // Dispose dispose drawable model
-func (dm *DrawableModel) Dispose() {
+func (dm *drawableModel) Dispose() {
 	dm.vao.dispose()
 }
 
@@ -434,4 +392,8 @@ func validateVertexDataMatchToPosition(drawableDataComponent drawableDataCompone
 		return true, fmt.Errorf("\n***\t%s VERTEX length should be match with POSITION VERTEX length\n***\t%s VERTEX length : %d\n***\tPOSITION VERTEX length : %d", dataName, dataName, toValidateVertexLen, positionVertexLen)
 	}
 	return false, nil
+}
+
+func (dmID DrawableModelID) LoadTexture(filePath string) {
+	window.kdrawer.models[int(dmID)].loadTextureFile(filePath)
 }
