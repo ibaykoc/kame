@@ -1,11 +1,7 @@
 package kame
 
-import (
-	"github.com/go-gl/mathgl/mgl32"
-)
-
 type kwindowDrawer2DBuilder struct {
-	backgroundColor                mgl32.Vec4
+	backgroundColor                Kcolor
 	windowWidth, windowHeight, ppu float32
 }
 
@@ -15,7 +11,7 @@ func KwindowDrawer2DBuilder() *kwindowDrawer2DBuilder {
 	}
 }
 
-func (kwd2db *kwindowDrawer2DBuilder) SetBackgroundColor(color mgl32.Vec4) *kwindowDrawer2DBuilder {
+func (kwd2db *kwindowDrawer2DBuilder) SetBackgroundColor(color Kcolor) *kwindowDrawer2DBuilder {
 	kwd2db.backgroundColor = color
 	return kwd2db
 }
@@ -25,13 +21,18 @@ func (kwd2db *kwindowDrawer2DBuilder) SetPixelPerUnit(ppu float32) *kwindowDrawe
 	return kwd2db
 }
 
-func (kwd2db *kwindowDrawer2DBuilder) BuildTo(kwindowID KwindowID) (KwindowDrawer2DID, error) {
+func (kwd2db *kwindowDrawer2DBuilder) BuildTo(kwindowID KwindowID) (KwindowDrawer2DController, error) {
 	kwd2db.windowWidth = float32(windows[kwindowID].width)
 	kwd2db.windowHeight = float32(windows[kwindowID].height)
 	drawer, err := newKwindowDrawer2D(*kwd2db)
 	if err != nil {
-		return KwindowDrawer2DID(-1), err
+		return KwindowDrawer2DController{}, err
 	}
 	windows[kwindowID].kwindowDrawer = &drawer
-	return KwindowDrawer2DID(kwindowID), nil
+	return KwindowDrawer2DController{
+		KwindowDrawerController: KwindowDrawerController{
+			kwindowDrawer: &drawer.kwindowDrawer,
+		},
+		kwindowDrawer2D: &drawer,
+	}, nil
 }

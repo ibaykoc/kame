@@ -5,66 +5,47 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-type KwindowDrawer2DID KwindowDrawerID
-
-func (kwd2d KwindowDrawer2DID) StoreTexturePNG(path string) (ktextureID, error) {
-	ktex, err := newktextureFromPNG(path)
-	if err != nil {
-		return ktextureID(0), err
-	}
-	(windows[KwindowID(kwd2d)].kwindowDrawer.(*KwindowDrawer2D)).ktextures[ktex.id] = ktex
-	return ktex.id, nil
+type KwindowDrawer2DController struct {
+	KwindowDrawerController
+	kwindowDrawer2D *kwindowDrawer2D
 }
 
-func (kwd2d KwindowDrawer2DID) StoreMesh(positions []float32, uvs []float32, elements []uint32) (kmeshID, error) {
-	mesh, err := newkmesh(positions, uvs, elements)
+func (wdCon KwindowDrawer2DController) StoreMesh(positions []float32, uvs []float32, elements []uint32) (kmeshID, error) {
+	mesh, err := newkmeshPosUV(positions, uvs, elements)
 	if err != nil {
 		return kmeshID(0), err
 	}
-	(windows[KwindowID(kwd2d)].kwindowDrawer.(*KwindowDrawer2D)).kmeshes[mesh.id] = mesh
+	wdCon.kwindowDrawer.kmeshes[mesh.id] = mesh
 	return mesh.id, nil
 }
 
-func (kwd2d KwindowDrawer2DID) StoreTintColor(color Kcolor) kcolorID {
-	colID := kcolorID(len((windows[KwindowID(kwd2d)].kwindowDrawer.(*KwindowDrawer2D)).tintColors))
-	(windows[KwindowID(kwd2d)].kwindowDrawer.(*KwindowDrawer2D)).tintColors[colID] = color
+func (wdCon KwindowDrawer2DController) StoreTintColor(color Kcolor) kcolorID {
+	colID := kcolorID(len(wdCon.kwindowDrawer2D.tintColors))
+	wdCon.kwindowDrawer2D.tintColors[colID] = color
 	return colID
 }
 
-func (kwd2d KwindowDrawer2DID) DefaultShaderID() kshaderID {
-	return windows[KwindowID(kwd2d)].kwindowDrawer.DefaultShaderID()
+type kwindowDrawer2D struct {
+	kwindowDrawer
+	tintColors map[kcolorID]Kcolor
+	batch      map[kshaderID]map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4
 }
 
-func (kwd2d *KwindowDrawer2D) GetCamera() *kdrawerCamera {
-	return &kwd2d.kdrawerCamera
-}
-
-type KwindowDrawer2D struct {
-	backgroundColor  mgl32.Vec4
-	kdrawerCamera    kdrawerCamera
-	defaultkshaderID kshaderID
-	kshaders         map[kshaderID]*kshader
-	kmeshes          map[kmeshID]kmesh
-	ktextures        map[ktextureID]ktexture
-	tintColors       map[kcolorID]Kcolor
-	batch            map[kshaderID]map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4
-}
-
-func newKwindowDrawer2D(config kwindowDrawer2DBuilder) (KwindowDrawer2D, error) {
+func newKwindowDrawer2D(config kwindowDrawer2DBuilder) (kwindowDrawer2D, error) {
 	if err := gl.Init(); err != nil {
-		return KwindowDrawer2D{}, err
+		return kwindowDrawer2D{}, err
 	}
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.Enable(gl.DEPTH_TEST)
 	gl.Enable(gl.CULL_FACE)
-	// version := gl.GoStr(gl.GetString(gl.VERSION))
-	// fmt.Println("OpenGL initialized: version", version)
+	debug.pf("2D OpenGL initialized: version %s\n", gl.GoStr(gl.GetString(gl.VERSION)))
+
 	kshaders := make(map[kshaderID]*kshader)
 
 	defaultShader := createkshader(
-		defaultVertexShader,
-		defaultSpriteFragmentShader,
+		default2DVertexShader,
+		default2DFragmentShader,
 		[]string{
 			"v", "p",
 			"texture0",
@@ -82,45 +63,49 @@ func newKwindowDrawer2D(config kwindowDrawer2DBuilder) (KwindowDrawer2D, error) 
 
 	kshaders[kshaderID(defaultShader.id)] = &defaultShader
 	// gl.Viewport(0, 0, int32(config.windowWidth), int32(config.windowHeight))
-	gl.ClearColor(config.backgroundColor.Elem())
+	gl.ClearColor(config.backgroundColor.RGBA())
 
-	return KwindowDrawer2D{
+	kwd := kwindowDrawer{
 		backgroundColor:  config.backgroundColor,
 		defaultkshaderID: kshaderID(defaultShader.id),
 		kdrawerCamera:    &camera,
 		kshaders:         kshaders,
 		kmeshes:          make(map[kmeshID]kmesh),
 		ktextures:        make(map[ktextureID]ktexture),
-		tintColors:       make(map[kcolorID]Kcolor),
-		batch:            make(map[kshaderID]map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4),
+	}
+
+	return kwindowDrawer2D{
+		kwindowDrawer: kwd,
+		tintColors:    make(map[kcolorID]Kcolor),
+		batch:         make(map[kshaderID]map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4),
 	}, nil
 }
 
-func (d *KwindowDrawer2D) clear() {
+func (d *kwindowDrawer2D) clear() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
-func (d *KwindowDrawer2D) AppendDrawable(kdrawable Kdrawable, translation mgl32.Mat4) {
+func (d *kwindowDrawer2D) AppendDrawable(kdrawable Kdrawable, translation mgl32.Mat4) {
 	dw := kdrawable.(Kdrawable2d)
-	if _, shaderIDHasAdded := d.batch[dw.Shader]; !shaderIDHasAdded {
-		d.batch[dw.Shader] = make(map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4)
+	if _, shaderIDHasAdded := d.batch[dw.ShaderID]; !shaderIDHasAdded {
+		d.batch[dw.ShaderID] = make(map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4)
 	}
-	if _, meshIDHasAdded := d.batch[dw.Shader][dw.Mesh]; !meshIDHasAdded {
-		d.batch[dw.Shader][dw.Mesh] = make(map[ktextureID]map[kcolorID][]mgl32.Mat4)
+	if _, meshIDHasAdded := d.batch[dw.ShaderID][dw.MeshID]; !meshIDHasAdded {
+		d.batch[dw.ShaderID][dw.MeshID] = make(map[ktextureID]map[kcolorID][]mgl32.Mat4)
 	}
-	if _, textureIDHasAdded := d.batch[dw.Shader][dw.Mesh][dw.Texture]; !textureIDHasAdded {
-		d.batch[dw.Shader][dw.Mesh][dw.Texture] = make(map[kcolorID][]mgl32.Mat4)
+	if _, textureIDHasAdded := d.batch[dw.ShaderID][dw.MeshID][dw.TextureID]; !textureIDHasAdded {
+		d.batch[dw.ShaderID][dw.MeshID][dw.TextureID] = make(map[kcolorID][]mgl32.Mat4)
 	}
-	if _, tintColorIDHasAdded := d.batch[dw.Shader][dw.Mesh][dw.Texture][dw.TintColor]; !tintColorIDHasAdded {
-		d.batch[dw.Shader][dw.Mesh][dw.Texture][dw.TintColor] = []mgl32.Mat4{}
+	if _, tintColorIDHasAdded := d.batch[dw.ShaderID][dw.MeshID][dw.TextureID][dw.TintColorID]; !tintColorIDHasAdded {
+		d.batch[dw.ShaderID][dw.MeshID][dw.TextureID][dw.TintColorID] = []mgl32.Mat4{}
 	}
-	d.batch[dw.Shader][dw.Mesh][dw.Texture][dw.TintColor] = append(d.batch[dw.Shader][dw.Mesh][dw.Texture][dw.TintColor], translation)
+	d.batch[dw.ShaderID][dw.MeshID][dw.TextureID][dw.TintColorID] = append(d.batch[dw.ShaderID][dw.MeshID][dw.TextureID][dw.TintColorID], translation)
 }
 
-func (d *KwindowDrawer2D) draw() {
+func (d *kwindowDrawer2D) draw() {
 	for kshaderID, meshIDtoTextureIDtoTintColorIDtoTrans := range d.batch {
 		d.kshaders[kshaderID].use()
-		d.kshaders[kshaderID].setUniformMat4F("p", d.kdrawerCamera.(*kdrawerCamera2D).projectionMatrix())
+		d.kshaders[kshaderID].setUniformMat4F("p", d.kdrawerCamera.projectionMatrix())
 		d.kshaders[kshaderID].setUniformMat4F("v", d.kdrawerCamera.viewMatrix())
 		for kmeshID, textureIDtoTintColorIDtoTrans := range meshIDtoTextureIDtoTintColorIDtoTrans {
 			kmesh := d.kmeshes[kmeshID]
@@ -157,16 +142,14 @@ func (d *KwindowDrawer2D) draw() {
 	}
 }
 
-func (d *KwindowDrawer2D) DefaultShaderID() kshaderID {
+func (kwd2d *kwindowDrawer2D) GetCamera() *kdrawerCamera {
+	return &kwd2d.kdrawerCamera
+}
+
+func (d *kwindowDrawer2D) DefaultShaderID() kshaderID {
 	return d.defaultkshaderID
 }
 
-// func (d *KDrawer) addDrawBacth(shaderID ShaderID, drawableModelID DrawableModelID, translation mgl32.Mat4) {
-// 	if _, shaderIDHasAdded := d.batch[shaderID]; !shaderIDHasAdded {
-// 		d.batch[shaderID] = make(map[DrawableModelID][]mgl32.Mat4)
-// 	}
-// 	if _, drawableIDHasAdded := d.batch[shaderID][drawableModelID]; !drawableIDHasAdded {
-// 		d.batch[shaderID][drawableModelID] = make([]mgl32.Mat4, 1)
-// 	}
-// 	d.batch[shaderID][drawableModelID] = append(d.batch[shaderID][drawableModelID], translation)
-// }
+func (d *kwindowDrawer2D) onWindowSizeChange(newWidth, newHeight float32) {
+	d.kdrawerCamera.onWindowSizeChange(newWidth, newHeight)
+}

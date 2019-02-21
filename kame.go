@@ -16,7 +16,7 @@ var debug kdebug = true
 var windows = make(map[KwindowID]*Kwindow)
 
 // Initialize kame
-func Initialize() error {
+func TurnOn() error {
 	runtime.LockOSThread()
 	if hasInitialized {
 		return errors.New("kame Should not initialize more than one")
@@ -25,7 +25,7 @@ func Initialize() error {
 		return err
 	}
 	hasInitialized = true
-	debug.pf("kame successfuly initialized\n")
+	debug.pln("kame On")
 	return nil
 }
 
@@ -143,9 +143,11 @@ func DoMagic() {
 // 	return window, nil
 // }
 
-// // TurnOff turn off kame
-// func TurnOff() {
-// 	window.Close()
-// 	glfw.Terminate()
-// 	fmt.Println("kame Turned Off")
-// }
+// TurnOff turn off kame
+func TurnOff() {
+	for _, window := range windows {
+		window.Close()
+	}
+	glfw.Terminate()
+	debug.pln("kame Off")
+}

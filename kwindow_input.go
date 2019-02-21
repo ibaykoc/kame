@@ -6,32 +6,40 @@ import (
 
 // Key input key
 type Key int
+type MouseButton int
 
 // KeyAction input key action
-type KeyAction int
+type ButtonAction int
 
 // KwindowInput input for kwindow
 type KwindowInput struct {
-	keyStats    map[Key]KeyAction
-	MouseX      float32
-	MouseY      float32
-	MouseDeltaX float32
-	MouseDeltaY float32
-	prevMouseX  float32
-	prevMouseY  float32
-	yScroll     float32
+	keyStats         map[Key]ButtonAction
+	mouseButtonStats map[MouseButton]ButtonAction
+	mouseX           float32
+	mouseY           float32
+	mouseDeltaX      float32
+	mouseDeltaY      float32
+	prevMouseX       float32
+	prevMouseY       float32
+	yScroll          float32
 	// glfwWindow  *glfw.Window
 }
 
 const (
 	// Press key state press
-	Press KeyAction = iota
+	Press ButtonAction = iota
 	// JustPress key state just press
 	JustPress
 	// Release key state release
 	Release
 	// JustRelease key state just release
 	JustRelease
+)
+
+const (
+	MouseButtonLeft   MouseButton = MouseButton(glfw.MouseButtonLeft)
+	MouseButtonRight  MouseButton = MouseButton(glfw.MouseButtonRight)
+	MouseButtonMiddle MouseButton = MouseButton(glfw.MouseButtonMiddle)
 )
 
 const (
@@ -160,7 +168,7 @@ const (
 )
 
 func newKinput(kwindow *Kwindow) KwindowInput {
-	ks := make(map[Key]KeyAction)
+	ks := make(map[Key]ButtonAction)
 	ks[KeyUnknown] = Release
 	ks[KeySpace] = Release
 	ks[KeyApostrophe] = Release
@@ -284,17 +292,23 @@ func newKinput(kwindow *Kwindow) KwindowInput {
 	ks[KeyMenu] = Release
 	ks[KeyLast] = Release
 
+	ms := make(map[MouseButton]ButtonAction)
+	ms[MouseButtonLeft] = Release
+	ms[MouseButtonRight] = Release
+	ms[MouseButtonMiddle] = Release
+
 	mX, mY := kwindow.glfwWindow.GetCursorPos()
 	return KwindowInput{
-		keyStats:   ks,
-		MouseX:     float32(mX),
-		MouseY:     float32(mY),
-		prevMouseX: float32(mX),
-		prevMouseY: float32(mY),
+		keyStats:         ks,
+		mouseButtonStats: ms,
+		mouseX:           float32(mX),
+		mouseY:           float32(mY),
+		prevMouseX:       float32(mX),
+		prevMouseY:       float32(mY),
 	}
 }
 
-func (i *KwindowInput) glfwInputHandler(glfwKey glfw.Key, glfwAction glfw.Action) {
+func (i *KwindowInput) glfwKeyInputHandler(glfwKey glfw.Key, glfwAction glfw.Action) {
 	prevStat := i.keyStats[Key(glfwKey)]
 	if glfwAction == glfw.Press {
 		if prevStat != Press {
@@ -311,9 +325,26 @@ func (i *KwindowInput) glfwInputHandler(glfwKey glfw.Key, glfwAction glfw.Action
 	}
 }
 
+func (i *KwindowInput) glfwMouseButtonHandler(button glfw.MouseButton, action glfw.Action) {
+	prevStat := i.mouseButtonStats[MouseButton(button)]
+	if action == glfw.Press {
+		if prevStat != Press {
+			i.mouseButtonStats[MouseButton(button)] = JustPress
+		} else {
+			i.mouseButtonStats[MouseButton(button)] = Press
+		}
+	} else if action == glfw.Release {
+		if prevStat != Release {
+			i.mouseButtonStats[MouseButton(button)] = JustRelease
+		} else {
+			i.mouseButtonStats[MouseButton(button)] = Release
+		}
+	}
+}
+
 func (i *KwindowInput) glfwMousePosHandler(x, y float64) {
-	i.MouseX = float32(x)
-	i.MouseY = float32(y)
+	i.mouseX = float32(x)
+	i.mouseY = float32(y)
 }
 
 func (i *KwindowInput) glfwMouseScrollHandler(xoff, yoff float64) {
@@ -330,15 +361,33 @@ func (i *KwindowInput) update() {
 		}
 	}
 
+	// Update MouseButton Stat
+	for k, v := range i.mouseButtonStats {
+		if v == JustPress {
+			i.mouseButtonStats[k] = Press
+		} else if v == JustRelease {
+			i.mouseButtonStats[k] = Release
+		}
+	}
+
 	// Update Mouse Stat
-	i.MouseDeltaX = i.MouseX - i.prevMouseX
-	i.MouseDeltaY = i.MouseY - i.prevMouseY
-	i.prevMouseX = i.MouseX
-	i.prevMouseY = i.MouseY
+	i.mouseDeltaX = i.mouseX - i.prevMouseX
+	i.mouseDeltaY = i.mouseY - i.prevMouseY
+	i.prevMouseX = i.mouseX
+	i.prevMouseY = i.mouseY
 	i.yScroll = 0
 	glfw.PollEvents()
 }
 
-func (i *KwindowInput) GetKeyStat(key Key) KeyAction {
+func (i *KwindowInput) GetKeyStat(key Key) ButtonAction {
 	return i.keyStats[key]
+}
+
+func (i *KwindowInput) GetMouseButtonStat(mouseButton MouseButton) ButtonAction {
+	return i.mouseButtonStats[mouseButton]
+}
+
+//GetMousePosition (0,0) at top left, going positively to bottom right
+func (i *KwindowInput) GetMousePosition(mouseButton MouseButton) (x, y float32) {
+	return i.mouseX, i.mouseY
 }

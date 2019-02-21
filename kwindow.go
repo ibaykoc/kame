@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-gl/gl/v4.1-core/gl"
+
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
@@ -17,9 +19,17 @@ func (kwid KwindowID) Close() {
 	windows[kwid].Close()
 }
 
+func (kwid KwindowID) EnableCameraMovementControl(enable bool) {
+	windows[kwid].cameraControlEnabled = enable
+}
+
+func (kwid KwindowID) LockCursor() {
+	windows[kwid].LockCursor()
+}
+
 type updateFunc func(timeSinceLastFrame float32)
 type drawFunc func(kwindowDrawer *KwindowDrawer)
-type processInputFunc func(inputState map[Key]KeyAction)
+type processInputFunc func(windowInput KwindowInput)
 type onDropFileFunc func(filePath string)
 
 // Kwindow window for kame
@@ -43,13 +53,13 @@ type Kwindow struct {
 	windowedHeight, windowedWidth int
 	windowedX, windowedY          int
 	resizable                     bool
-	// CameraType                    ProjectionType
+	cameraControlEnabled          bool
 }
 
 // CreateKwindow create Kwindow
-func newKwindow(config kwindowBuilder) (Kwindow, error) {
+func newKwindow(config kwindowBuilder) (*Kwindow, error) {
 	if config.targetFPS <= 0 {
-		return Kwindow{}, fmt.Errorf("Target FPS should not be less than 1")
+		return nil, fmt.Errorf("Target FPS should not be less than 1")
 	}
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -76,7 +86,7 @@ func newKwindow(config kwindowBuilder) (Kwindow, error) {
 		}
 	} else {
 		if config.width <= 0 || config.height <= 0 {
-			return Kwindow{}, fmt.Errorf("\n***\tWidth or Height configuration should not be less than 1")
+			return nil, fmt.Errorf("\n***\tWidth or Height configuration should not be less than 1")
 		}
 		glfwWindow, err = glfw.CreateWindow(config.width, config.height, config.title, nil, nil)
 		if config.center {
@@ -90,7 +100,7 @@ func newKwindow(config kwindowBuilder) (Kwindow, error) {
 		glfwWindow.SetPos(wX, wY)
 	}
 	if err != nil {
-		return Kwindow{}, err
+		return nil, err
 	}
 	glfwWindow.MakeContextCurrent()
 	var updateFunc updateFunc
@@ -122,7 +132,7 @@ func newKwindow(config kwindowBuilder) (Kwindow, error) {
 	kinput := newKinput(&w)
 	w.input = &kinput
 	w.glfwWindow.SetKeyCallback(func(glfwWindow *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-		w.input.glfwInputHandler(key, action)
+		w.input.glfwKeyInputHandler(key, action)
 	})
 
 	w.glfwWindow.SetCursorPosCallback(func(glfwWindow *glfw.Window, xpos float64, ypos float64) {
@@ -140,8 +150,20 @@ func newKwindow(config kwindowBuilder) (Kwindow, error) {
 	w.glfwWindow.SetScrollCallback(func(glfwWin *glfw.Window, xoff, yoff float64) {
 		w.input.glfwMouseScrollHandler(xoff, yoff)
 	})
+
+	w.glfwWindow.SetMouseButtonCallback(func(glfwWin *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+		w.input.glfwMouseButtonHandler(button, action)
+	})
+
+	w.glfwWindow.SetSizeCallback(func(glfwWin *glfw.Window, width int, height int) {
+		gl.Viewport(0, 0, int32(width), int32(height))
+		if w.kwindowDrawer != nil {
+			w.kwindowDrawer.onWindowSizeChange(float32(width), float32(height))
+		}
+	})
+
 	debug.pf("Kwindow %s successfuly created\n", config.title)
-	return w, nil
+	return &w, nil
 }
 
 func (w *Kwindow) SetOnDropFileFunc(onDropFileFunc onDropFileFunc) {
@@ -181,12 +203,8 @@ func (w *Kwindow) run() {
 	dt *= float32(w.targetFps)
 	w.lastFrameStartTime = time.Now()
 
-	// if w.cameraFPSControlEnabled {
-	// (*w.kwindowDrawer.GetCamera()).updateFPSControl(dt) // ..updateFPSControl(dt)
-	// }
-
 	if !w.hasClose && w.processInputFunc != nil {
-		w.processInputFunc(w.input.keyStats)
+		w.processInputFunc((*w.input))
 	}
 
 	// Do update
@@ -195,7 +213,9 @@ func (w *Kwindow) run() {
 	}
 	// Do draw
 	if w.kwindowDrawer != nil {
-		(*w.kwindowDrawer.GetCamera()).updateFPSControl(dt) // ..updateFPSControl(dt)
+		if w.cameraControlEnabled {
+			(*w.kwindowDrawer.GetCamera()).updateFPSControl((*w.input), dt) // ..updateFPSControl(dt)
+		}
 		w.kwindowDrawer.clear()
 		if !w.hasClose && w.drawFunc != nil {
 			w.drawFunc(&w.kwindowDrawer)

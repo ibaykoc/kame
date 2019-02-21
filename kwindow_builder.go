@@ -70,6 +70,6 @@ func (kwb *kwindowBuilder) Build() (KwindowID, error) {
 		return KwindowID(-1), err
 	}
 	w.id = KwindowID(len(windows) + 1)
-	windows[w.id] = &w
+	windows[w.id] = w
 	return w.id, nil
 }
