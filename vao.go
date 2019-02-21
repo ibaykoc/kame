@@ -5,9 +5,11 @@ import (
 )
 
 type VAO struct {
-	id            uint32
-	attributeSize uint32
-	vboIDs        []uint32
+	id                 uint32
+	attributeSize      uint32
+	instancedAttribute []uint32
+	vboIDs             []uint32
+	instancedVBOIds    []uint32
 }
 
 func createVAO() VAO {
@@ -19,8 +21,8 @@ func createVAO() VAO {
 }
 
 func (vao *VAO) storeVBO(vbo VBO) {
-	vao.bind()
 	vbo.bind()
+	vao.bind()
 	for _, vboData := range vbo.data {
 		gl.VertexAttribPointer(vao.attributeSize, vboData.count, vbo.dataType, false, vbo.stride, gl.PtrOffset(vboData.byteOffset))
 		vao.attributeSize++
@@ -28,6 +30,21 @@ func (vao *VAO) storeVBO(vbo VBO) {
 	vao.unbind()
 	vbo.unbind()
 	vao.vboIDs = append(vao.vboIDs, vbo.id)
+}
+
+func (vao *VAO) storeInstanceVBO(vbo VBO) {
+	vbo.bind()
+	vao.bind()
+	for _, vboData := range vbo.data {
+		gl.EnableVertexAttribArray(vao.attributeSize)
+		gl.VertexAttribPointer(vao.attributeSize, vboData.count, vbo.dataType, false, vbo.stride, gl.PtrOffset(vboData.byteOffset))
+		gl.VertexAttribDivisor(vao.attributeSize, 1)
+		vao.instancedAttribute = append(vao.instancedAttribute, vao.attributeSize)
+		vao.attributeSize++
+	}
+	vao.unbind()
+	vbo.unbind()
+	vao.instancedVBOIds = append(vao.instancedVBOIds, vbo.id)
 }
 
 func (vao *VAO) storeEBO(indices []uint32) {
@@ -38,6 +55,14 @@ func (vao *VAO) storeEBO(indices []uint32) {
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
 	vao.unbind()
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
+}
+
+func (vao *VAO) updateModelMat4VBO(data []float32) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, vao.instancedVBOIds[0])
+	vao.bind()
+	gl.BufferData(gl.ARRAY_BUFFER, len(data)*4, gl.Ptr(data), gl.DYNAMIC_DRAW)
+	vao.unbind()
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 }
 
 func (vao *VAO) use() {

@@ -45,12 +45,12 @@ func createShaderProgram(vertexShaderSource string, fragmentShaderSource string,
 	}
 	return ShaderProgram{
 		id:               shaderProgramID,
-		defaultTextureID: LoadDefaultTexture(),
+		defaultTextureID: loadDefaultTexture(),
 		uniforms:         _uniforms,
 	}
 }
 
-func (p *ShaderProgram) SetUniform1i(name string, value int32) {
+func (p *ShaderProgram) setUniform1i(name string, value int32) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
 		panic(fmt.Errorf("Uniform (%v) not found", name))
@@ -58,7 +58,7 @@ func (p *ShaderProgram) SetUniform1i(name string, value int32) {
 	gl.Uniform1i(uniLocation, value)
 }
 
-func (p *ShaderProgram) SetUniform1F(name string, value float32) {
+func (p *ShaderProgram) setUniform1F(name string, value float32) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
 		panic(fmt.Errorf("Uniform (%v) not found", name))
@@ -66,14 +66,14 @@ func (p *ShaderProgram) SetUniform1F(name string, value float32) {
 	gl.Uniform1f(uniLocation, value)
 }
 
-func (p *ShaderProgram) SetUniform3F(name string, v0 float32, v1 float32, v2 float32) {
+func (p *ShaderProgram) setUniform3F(name string, v0 float32, v1 float32, v2 float32) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
 		panic(fmt.Errorf("Uniform (%v) not found", name))
 	}
 	gl.Uniform3f(uniLocation, v0, v1, v2)
 }
-func (p *ShaderProgram) SetUniformMat4F(name string, value mgl.Mat4) {
+func (p *ShaderProgram) setUniformMat4F(name string, value mgl.Mat4) {
 	uniLocation, found := p.uniforms[name]
 	if !found {
 		panic(fmt.Errorf("Uniform (%v) not found", name))
@@ -82,32 +82,33 @@ func (p *ShaderProgram) SetUniformMat4F(name string, value mgl.Mat4) {
 	gl.UniformMatrix4fv(uniLocation, 1, false, &m4[0])
 }
 
-func (p *ShaderProgram) Start() {
+func (p *ShaderProgram) start() {
 	gl.UseProgram(p.id)
 }
-func (p *ShaderProgram) Stop() {
+func (p *ShaderProgram) stop() {
 	gl.UseProgram(0)
 }
-func (p *ShaderProgram) Dispose() {
+func (p *ShaderProgram) dispose() {
 	gl.DeleteProgram(p.id)
 }
-func loadShader(source string, shaderType uint32) uint32 {
-	shaderSource := source + "\x00"
-	shaderID := gl.CreateShader(shaderType)
-	cstr, free := gl.Strs(shaderSource)
-	gl.ShaderSource(shaderID, 1, cstr, nil)
-	free()
-	gl.CompileShader(shaderID)
-	var success int32
-	gl.GetShaderiv(shaderID, gl.COMPILE_STATUS, &success)
-	if success == gl.FALSE {
-		var logLength int32
-		gl.GetShaderiv(shaderID, gl.INFO_LOG_LENGTH, &logLength)
 
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetShaderInfoLog(shaderID, logLength, nil, gl.Str(log))
+// func loadShader(source string, shaderType uint32) uint32 {
+// 	shaderSource := source + "\x00"
+// 	shaderID := gl.CreateShader(shaderType)
+// 	cstr, free := gl.Strs(shaderSource)
+// 	gl.ShaderSource(shaderID, 1, cstr, nil)
+// 	free()
+// 	gl.CompileShader(shaderID)
+// 	var success int32
+// 	gl.GetShaderiv(shaderID, gl.COMPILE_STATUS, &success)
+// 	if success == gl.FALSE {
+// 		var logLength int32
+// 		gl.GetShaderiv(shaderID, gl.INFO_LOG_LENGTH, &logLength)
 
-		fmt.Printf("failed to compile shader\nTYPE: %v\nLOG: %v\nSOURCE: %v\n", shaderType, log, shaderSource)
-	}
-	return shaderID
-}
+// 		log := strings.Repeat("\x00", int(logLength+1))
+// 		gl.GetShaderInfoLog(shaderID, logLength, nil, gl.Str(log))
+
+// 		fmt.Printf("failed to compile shader\nTYPE: %v\nLOG: %v\nSOURCE: %v\n", shaderType, log, shaderSource)
+// 	}
+// 	return shaderID
+// }

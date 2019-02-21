@@ -4,9 +4,14 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
+// Key input key
 type Key int
+
+// KeyAction input key action
 type KeyAction int
-type Input struct {
+
+// KwindowInput input for kwindow
+type KwindowInput struct {
 	keyStats    map[Key]KeyAction
 	MouseX      float32
 	MouseY      float32
@@ -14,13 +19,18 @@ type Input struct {
 	MouseDeltaY float32
 	prevMouseX  float32
 	prevMouseY  float32
-	glfwWindow  *glfw.Window
+	yScroll     float32
+	// glfwWindow  *glfw.Window
 }
 
 const (
+	// Press key state press
 	Press KeyAction = iota
+	// JustPress key state just press
 	JustPress
+	// Release key state release
 	Release
+	// JustRelease key state just release
 	JustRelease
 )
 
@@ -149,7 +159,7 @@ const (
 	KeyLast         Key = Key(glfw.KeyLast)
 )
 
-func newInput(glfwWindow *glfw.Window) Input {
+func newKinput(kwindow *Kwindow) KwindowInput {
 	ks := make(map[Key]KeyAction)
 	ks[KeyUnknown] = Release
 	ks[KeySpace] = Release
@@ -274,10 +284,9 @@ func newInput(glfwWindow *glfw.Window) Input {
 	ks[KeyMenu] = Release
 	ks[KeyLast] = Release
 
-	mX, mY := glfwWindow.GetCursorPos()
-	return Input{
+	mX, mY := kwindow.glfwWindow.GetCursorPos()
+	return KwindowInput{
 		keyStats:   ks,
-		glfwWindow: glfwWindow,
 		MouseX:     float32(mX),
 		MouseY:     float32(mY),
 		prevMouseX: float32(mX),
@@ -285,7 +294,7 @@ func newInput(glfwWindow *glfw.Window) Input {
 	}
 }
 
-func (i *Input) glfwInputHandler(glfwKey glfw.Key, glfwAction glfw.Action) {
+func (i *KwindowInput) glfwInputHandler(glfwKey glfw.Key, glfwAction glfw.Action) {
 	prevStat := i.keyStats[Key(glfwKey)]
 	if glfwAction == glfw.Press {
 		if prevStat != Press {
@@ -302,12 +311,16 @@ func (i *Input) glfwInputHandler(glfwKey glfw.Key, glfwAction glfw.Action) {
 	}
 }
 
-func (i *Input) glfwMousePosHandler(x, y float64) {
+func (i *KwindowInput) glfwMousePosHandler(x, y float64) {
 	i.MouseX = float32(x)
 	i.MouseY = float32(y)
 }
 
-func (i *Input) update() {
+func (i *KwindowInput) glfwMouseScrollHandler(xoff, yoff float64) {
+	i.yScroll = float32(yoff)
+}
+
+func (i *KwindowInput) update() {
 	// Update Key Stat
 	for k, v := range i.keyStats {
 		if v == JustPress {
@@ -322,8 +335,10 @@ func (i *Input) update() {
 	i.MouseDeltaY = i.MouseY - i.prevMouseY
 	i.prevMouseX = i.MouseX
 	i.prevMouseY = i.MouseY
+	i.yScroll = 0
+	glfw.PollEvents()
 }
 
-func (i *Input) GetKeyStat(key Key) KeyAction {
+func (i *KwindowInput) GetKeyStat(key Key) KeyAction {
 	return i.keyStats[key]
 }

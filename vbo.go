@@ -15,6 +15,22 @@ func createFloat32VBO(perVertexDataCount int32, data []VBOData, buffer []float32
 	gl.GenBuffers(1, &vboID)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vboID)
 	gl.BufferData(gl.ARRAY_BUFFER, len(buffer)*4, gl.Ptr(buffer), gl.STATIC_DRAW)
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	return VBO{
+		id:                 vboID,
+		data:               data,
+		perVertexDataCount: perVertexDataCount,
+		stride:             perVertexDataCount * 4,
+		dataType:           gl.FLOAT,
+	}
+}
+
+func createFloat32InstanceVBO(perVertexDataCount int32, data []VBOData, buffer []float32) VBO {
+	var vboID uint32
+	gl.GenBuffers(1, &vboID)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboID)
+	gl.BufferData(gl.ARRAY_BUFFER, len(buffer)*4, gl.Ptr(buffer), gl.DYNAMIC_DRAW)
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	return VBO{
 		id:                 vboID,
 		data:               data,

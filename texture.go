@@ -8,7 +8,7 @@ import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
-func LoadDefaultTexture() uint32 {
+func loadDefaultTexture() uint32 {
 	var textureID uint32
 	gl.GenTextures(1, &textureID)
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
@@ -70,19 +70,19 @@ func loadTextureFile(filePath string) (uint32, error) {
 	return textureID, nil
 }
 
-func loadTexturePixel(pixelsData []byte, width int32, height int32) uint32 {
-	fmt.Printf("Load new texture pixel: size(%d, %d)\n", width, height)
-	var textureID uint32
-	gl.GenTextures(1, &textureID)
-	gl.BindTexture(gl.TEXTURE_2D, textureID)
+// func loadTexturePixel(pixelsData []byte, width int32, height int32) uint32 {
+// 	fmt.Printf("Load new texture pixel: size(%d, %d)\n", width, height)
+// 	var textureID uint32
+// 	gl.GenTextures(1, &textureID)
+// 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+// 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+// 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+// 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+// 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixelsData))
-	gl.GenerateMipmap(gl.TEXTURE_2D)
+// 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixelsData))
+// 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
-	return textureID
-}
+// 	return textureID
+// }
