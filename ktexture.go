@@ -8,10 +8,10 @@ import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
-type ktextureID uint32
+type KtextureID uint32
 
 type ktexture struct {
-	id           ktextureID
+	id           KtextureID
 	unitLocation uint32
 }
 
@@ -68,7 +68,7 @@ func newktextureFromPNG(filePath string) (ktexture, error) {
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	ktex := ktexture{
-		id:           ktextureID(textureID),
+		id:           KtextureID(textureID),
 		unitLocation: 0,
 	}
 

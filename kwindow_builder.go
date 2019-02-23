@@ -7,6 +7,7 @@ type kwindowBuilder struct {
 	processInputFunc                        processInputFunc
 	updateFunc                              updateFunc
 	drawFunc                                drawFunc
+	onDropFileFunc                          onDropFileFunc
 }
 
 func KwindowBuilder() *kwindowBuilder {
@@ -49,6 +50,11 @@ func (kwb *kwindowBuilder) SetDrawFunc(drawFunc drawFunc) *kwindowBuilder {
 	return kwb
 }
 
+func (kwb *kwindowBuilder) SetOnDropFileFunc(onDropFileFunc onDropFileFunc) *kwindowBuilder {
+	kwb.onDropFileFunc = onDropFileFunc
+	return kwb
+}
+
 func (kwb *kwindowBuilder) IsWindowed() *kwindowBuilder {
 	kwb.windowed = true
 	return kwb
@@ -64,12 +70,14 @@ func (kwb *kwindowBuilder) IsFullscreen() *kwindowBuilder {
 	return kwb
 }
 
-func (kwb *kwindowBuilder) Build() (KwindowID, error) {
+func (kwb *kwindowBuilder) Build() (KwindowController, error) {
 	w, err := newKwindow(*kwb)
 	if err != nil {
-		return KwindowID(-1), err
+		return KwindowController{}, err
 	}
-	w.id = KwindowID(len(windows) + 1)
+	w.id = KwindowID(len(windows))
 	windows[w.id] = w
-	return w.id, nil
+	return KwindowController{
+		window: windows[w.id],
+	}, nil
 }

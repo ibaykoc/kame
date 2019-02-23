@@ -13,7 +13,7 @@ import (
 
 var hasInitialized = false
 var debug kdebug = true
-var windows = make(map[KwindowID]*Kwindow)
+var windows = make(map[KwindowID]*kwindow)
 
 // Initialize kame
 func TurnOn() error {

@@ -20,17 +20,17 @@ type kwindowDrawer struct {
 	defaultkshaderID kshaderID
 	kshaders         map[kshaderID]*kshader
 	kmeshes          map[kmeshID]kmesh
-	ktextures        map[ktextureID]ktexture
+	ktextures        map[KtextureID]ktexture
 }
 
-func (wdCon KwindowDrawerController) GetDefaultShaderID() kshaderID {
+func (wdCon KwindowDrawerController) DefaultShaderID() kshaderID {
 	return wdCon.kwindowDrawer.defaultkshaderID
 }
 
-func (wdCon KwindowDrawerController) StoreTexturePNG(path string) (ktextureID, error) {
+func (wdCon KwindowDrawerController) StoreTexturePNG(path string) (KtextureID, error) {
 	ktex, err := newktextureFromPNG(path)
 	if err != nil {
-		return ktextureID(0), err
+		return KtextureID(0), err
 	}
 	wdCon.kwindowDrawer.ktextures[ktex.id] = ktex
 	return ktex.id, nil

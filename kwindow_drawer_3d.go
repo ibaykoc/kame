@@ -19,9 +19,24 @@ func (wdCon KwindowDrawer3DController) StoreMesh(positions []float32, uvs []floa
 	return mesh.id, nil
 }
 
+func (wdCon KwindowDrawer3DController) StoreMeshFromOBJ(path string) (kmeshID, error) {
+	mesh, err := LoadOBJ(path)
+	if err != nil {
+		return kmeshID(0), err
+	}
+	wdCon.kwindowDrawer.kmeshes[mesh.id] = mesh
+	return mesh.id, nil
+}
+
+func (wdCon KwindowDrawer3DController) Camera() KdrawerCamera3DController {
+	return KdrawerCamera3DController{
+		camera: wdCon.kwindowDrawer.kdrawerCamera.(*kdrawerCamera3D),
+	}
+}
+
 type kwindowDrawer3D struct {
 	kwindowDrawer
-	batch map[kshaderID]map[kmeshID]map[ktextureID][]mgl32.Mat4
+	batch map[kshaderID]map[kmeshID]map[KtextureID][]mgl32.Mat4
 }
 
 func newKwindowDrawer3D(config kwindowDrawer3DBuilder) (kwindowDrawer3D, error) {
@@ -62,12 +77,12 @@ func newKwindowDrawer3D(config kwindowDrawer3DBuilder) (kwindowDrawer3D, error) 
 		kdrawerCamera:    &camera,
 		kshaders:         kshaders,
 		kmeshes:          make(map[kmeshID]kmesh),
-		ktextures:        make(map[ktextureID]ktexture),
+		ktextures:        make(map[KtextureID]ktexture),
 	}
 
 	return kwindowDrawer3D{
 		kwindowDrawer: kwd,
-		batch:         make(map[kshaderID]map[kmeshID]map[ktextureID][]mgl32.Mat4),
+		batch:         make(map[kshaderID]map[kmeshID]map[KtextureID][]mgl32.Mat4),
 	}, nil
 }
 
@@ -81,10 +96,10 @@ func (d *kwindowDrawer3D) AppendDrawable(kdrawable Kdrawable, translation mgl32.
 		panic("Drawer3D needs drawable3D")
 	}
 	if _, shaderIDHasAdded := d.batch[dw.ShaderID]; !shaderIDHasAdded {
-		d.batch[dw.ShaderID] = make(map[kmeshID]map[ktextureID][]mgl32.Mat4)
+		d.batch[dw.ShaderID] = make(map[kmeshID]map[KtextureID][]mgl32.Mat4)
 	}
 	if _, meshIDHasAdded := d.batch[dw.ShaderID][dw.MeshID]; !meshIDHasAdded {
-		d.batch[dw.ShaderID][dw.MeshID] = make(map[ktextureID][]mgl32.Mat4)
+		d.batch[dw.ShaderID][dw.MeshID] = make(map[KtextureID][]mgl32.Mat4)
 	}
 	if _, textureIDHasAdded := d.batch[dw.ShaderID][dw.MeshID][dw.TextureID]; !textureIDHasAdded {
 		d.batch[dw.ShaderID][dw.MeshID][dw.TextureID] = []mgl32.Mat4{}
@@ -99,29 +114,27 @@ func (d *kwindowDrawer3D) draw() {
 		d.kshaders[kshaderID].setUniformMat4F("v", d.kdrawerCamera.viewMatrix())
 		for kmeshID, textureIDtoTintColorIDtoTrans := range meshIDtoTextureIDtoTintColorIDtoTrans {
 			kmesh := d.kmeshes[kmeshID]
-			totalMeshToDraw := int32(0)
-			var modelMat4Datas = []float32{}
 			for ktextureID, trans := range textureIDtoTintColorIDtoTrans {
+				var modelMat4Datas = []float32{}
+				totalMeshToDraw := int32(0)
 				ktexture := d.ktextures[ktextureID]
 				ktexture.startDraw()
 				for _, t := range trans {
 					totalMeshToDraw++
-					// d.kshaders[kshaderID].setUniformMat4F("m", t)
 					for _, tData := range [16]float32(t) {
 						modelMat4Datas = append(modelMat4Datas, tData)
 					}
-					// gl.DrawElements(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
 				}
-				// ktexture.stopDraw()
+				kmesh.vao.updateModelMat4VBO(modelMat4Datas)
+				kmesh.startDraw()
+				gl.DrawElementsInstanced(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0), totalMeshToDraw)
+				ktexture.stopDraw()
 				delete(d.batch[kshaderID][kmeshID], ktextureID)
 			}
-			// kmesh.stopDraw()
-			kmesh.vao.updateModelMat4VBO(modelMat4Datas)
-			kmesh.startDraw()
-			gl.DrawElementsInstanced(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0), totalMeshToDraw)
+			kmesh.stopDraw()
 			delete(d.batch[kshaderID], kmeshID)
 		}
-		// d.kshaders[kshaderID].unuse()
+		d.kshaders[kshaderID].unuse()
 		delete(d.batch, kshaderID)
 	}
 }

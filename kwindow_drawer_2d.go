@@ -28,7 +28,7 @@ func (wdCon KwindowDrawer2DController) StoreTintColor(color Kcolor) kcolorID {
 type kwindowDrawer2D struct {
 	kwindowDrawer
 	tintColors map[kcolorID]Kcolor
-	batch      map[kshaderID]map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4
+	batch      map[kshaderID]map[kmeshID]map[KtextureID]map[kcolorID][]mgl32.Mat4
 }
 
 func newKwindowDrawer2D(config kwindowDrawer2DBuilder) (kwindowDrawer2D, error) {
@@ -71,13 +71,13 @@ func newKwindowDrawer2D(config kwindowDrawer2DBuilder) (kwindowDrawer2D, error) 
 		kdrawerCamera:    &camera,
 		kshaders:         kshaders,
 		kmeshes:          make(map[kmeshID]kmesh),
-		ktextures:        make(map[ktextureID]ktexture),
+		ktextures:        make(map[KtextureID]ktexture),
 	}
 
 	return kwindowDrawer2D{
 		kwindowDrawer: kwd,
 		tintColors:    make(map[kcolorID]Kcolor),
-		batch:         make(map[kshaderID]map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4),
+		batch:         make(map[kshaderID]map[kmeshID]map[KtextureID]map[kcolorID][]mgl32.Mat4),
 	}, nil
 }
 
@@ -88,10 +88,10 @@ func (d *kwindowDrawer2D) clear() {
 func (d *kwindowDrawer2D) AppendDrawable(kdrawable Kdrawable, translation mgl32.Mat4) {
 	dw := kdrawable.(Kdrawable2d)
 	if _, shaderIDHasAdded := d.batch[dw.ShaderID]; !shaderIDHasAdded {
-		d.batch[dw.ShaderID] = make(map[kmeshID]map[ktextureID]map[kcolorID][]mgl32.Mat4)
+		d.batch[dw.ShaderID] = make(map[kmeshID]map[KtextureID]map[kcolorID][]mgl32.Mat4)
 	}
 	if _, meshIDHasAdded := d.batch[dw.ShaderID][dw.MeshID]; !meshIDHasAdded {
-		d.batch[dw.ShaderID][dw.MeshID] = make(map[ktextureID]map[kcolorID][]mgl32.Mat4)
+		d.batch[dw.ShaderID][dw.MeshID] = make(map[KtextureID]map[kcolorID][]mgl32.Mat4)
 	}
 	if _, textureIDHasAdded := d.batch[dw.ShaderID][dw.MeshID][dw.TextureID]; !textureIDHasAdded {
 		d.batch[dw.ShaderID][dw.MeshID][dw.TextureID] = make(map[kcolorID][]mgl32.Mat4)
@@ -109,9 +109,9 @@ func (d *kwindowDrawer2D) draw() {
 		d.kshaders[kshaderID].setUniformMat4F("v", d.kdrawerCamera.viewMatrix())
 		for kmeshID, textureIDtoTintColorIDtoTrans := range meshIDtoTextureIDtoTintColorIDtoTrans {
 			kmesh := d.kmeshes[kmeshID]
-			totalMeshToDraw := int32(0)
-			var modelMat4Datas = []float32{}
 			for ktextureID, colorIDtoTrans := range textureIDtoTintColorIDtoTrans {
+				var modelMat4Datas = []float32{}
+				totalMeshToDraw := int32(0)
 				ktexture := d.ktextures[ktextureID]
 				ktexture.startDraw()
 				for tintColorID, trans := range colorIDtoTrans {
@@ -120,24 +120,22 @@ func (d *kwindowDrawer2D) draw() {
 					d.kshaders[kshaderID].setUniform3F("tintColor", r, g, b)
 					for _, t := range trans {
 						totalMeshToDraw++
-						// d.kshaders[kshaderID].setUniformMat4F("m", t)
 						for _, tData := range [16]float32(t) {
 							modelMat4Datas = append(modelMat4Datas, tData)
 						}
-						// gl.DrawElements(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0))
 					}
 					delete(d.batch[kshaderID][kmeshID][ktextureID], tintColorID)
 				}
-				// ktexture.stopDraw()
+				kmesh.vao.updateModelMat4VBO(modelMat4Datas)
+				kmesh.startDraw()
+				gl.DrawElementsInstanced(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0), totalMeshToDraw)
+				ktexture.stopDraw()
 				delete(d.batch[kshaderID][kmeshID], ktextureID)
 			}
-			// kmesh.stopDraw()
-			kmesh.vao.updateModelMat4VBO(modelMat4Datas)
-			kmesh.startDraw()
-			gl.DrawElementsInstanced(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0), totalMeshToDraw)
+			kmesh.stopDraw()
 			delete(d.batch[kshaderID], kmeshID)
 		}
-		// d.kshaders[kshaderID].unuse()
+		d.kshaders[kshaderID].unuse()
 		delete(d.batch, kshaderID)
 	}
 }

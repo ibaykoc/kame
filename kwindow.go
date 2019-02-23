@@ -15,25 +15,33 @@ import (
 
 type KwindowID int
 
-func (kwid KwindowID) Close() {
-	windows[kwid].Close()
+type KwindowController struct {
+	window *kwindow
 }
 
-func (kwid KwindowID) EnableCameraMovementControl(enable bool) {
-	windows[kwid].cameraControlEnabled = enable
+func (kwCon KwindowController) ID() KwindowID {
+	return kwCon.window.id
 }
 
-func (kwid KwindowID) LockCursor() {
-	windows[kwid].LockCursor()
+func (kwCon KwindowController) Close() {
+	kwCon.window.Close()
+}
+
+func (kwCon KwindowController) EnableCameraMovementControl(enable bool) {
+	kwCon.window.cameraControlEnabled = enable
+}
+
+func (kwCon KwindowController) LockCursor(lock bool) {
+	kwCon.window.LockCursor(lock)
 }
 
 type updateFunc func(timeSinceLastFrame float32)
 type drawFunc func(kwindowDrawer *KwindowDrawer)
 type processInputFunc func(windowInput KwindowInput)
-type onDropFileFunc func(filePath string)
+type onDropFileFunc func(mouseX, mouseY float32, filePath string)
 
 // Kwindow window for kame
-type Kwindow struct {
+type kwindow struct {
 	id                            KwindowID
 	title                         string
 	width, height                 int
@@ -57,7 +65,7 @@ type Kwindow struct {
 }
 
 // CreateKwindow create Kwindow
-func newKwindow(config kwindowBuilder) (*Kwindow, error) {
+func newKwindow(config kwindowBuilder) (*kwindow, error) {
 	if config.targetFPS <= 0 {
 		return nil, fmt.Errorf("Target FPS should not be less than 1")
 	}
@@ -109,9 +117,11 @@ func newKwindow(config kwindowBuilder) (*Kwindow, error) {
 	processInputFunc = config.processInputFunc
 	var drawFunc drawFunc
 	drawFunc = config.drawFunc
+	var onDropFileFunc onDropFileFunc
+	onDropFileFunc = config.onDropFileFunc
 
 	glfwWindow.MakeContextCurrent()
-	w := Kwindow{
+	w := kwindow{
 		title:                   config.title,
 		width:                   config.width,
 		height:                  config.height,
@@ -127,6 +137,7 @@ func newKwindow(config kwindowBuilder) (*Kwindow, error) {
 		processInputFunc:        processInputFunc,
 		updateFunc:              updateFunc,
 		drawFunc:                drawFunc,
+		onDropFile:              onDropFileFunc,
 		resizable:               config.resizable,
 	}
 	kinput := newKinput(&w)
@@ -142,7 +153,7 @@ func newKwindow(config kwindowBuilder) (*Kwindow, error) {
 	w.glfwWindow.SetDropCallback(func(glfwWindow *glfw.Window, names []string) {
 		for _, filePath := range names {
 			if w.onDropFile != nil {
-				w.onDropFile(filePath)
+				w.onDropFile(w.input.mouseX, w.input.mouseY, filePath)
 			}
 		}
 	})
@@ -166,31 +177,35 @@ func newKwindow(config kwindowBuilder) (*Kwindow, error) {
 	return &w, nil
 }
 
-func (w *Kwindow) SetOnDropFileFunc(onDropFileFunc onDropFileFunc) {
+func (w *kwindow) SetOnDropFileFunc(onDropFileFunc onDropFileFunc) {
 	w.onDropFile = onDropFileFunc
 }
 
-func (w *Kwindow) EnableCameraMovementControl() {
+func (w *kwindow) EnableCameraMovementControl() {
 	w.cameraFPSControlEnabled = true
 }
 
-func (w *Kwindow) DisableCameraFPSControl() {
+func (w *kwindow) DisableCameraFPSControl() {
 	w.cameraFPSControlEnabled = false
 }
 
-func (w *Kwindow) LockCursor() {
-	w.glfwWindow.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+func (w *kwindow) LockCursor(lock bool) {
+	if lock {
+		w.glfwWindow.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+	} else {
+		w.glfwWindow.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+	}
 }
 
-func (w *Kwindow) UnlockCursor() {
+func (w *kwindow) UnlockCursor() {
 	w.glfwWindow.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
 }
 
-func (w *Kwindow) Start() {
+func (w *kwindow) Start() {
 	// w.kdrawer.start()
 }
 
-func (w *Kwindow) run() {
+func (w *kwindow) run() {
 	if w.hasClose {
 		return
 	}
@@ -239,11 +254,11 @@ func (w *Kwindow) run() {
 	w.input.update()
 }
 
-func (w *Kwindow) ToggleFullscreen() {
+func (w *kwindow) ToggleFullscreen() {
 	w.SetFullscreen(!w.isFullScreen)
 }
 
-func (w *Kwindow) SetFullscreen(enable bool) {
+func (w *kwindow) SetFullscreen(enable bool) {
 	if enable == w.isFullScreen {
 		return
 	}
@@ -263,32 +278,32 @@ func (w *Kwindow) SetFullscreen(enable bool) {
 	w.isFullScreen = !w.isFullScreen
 }
 
-func (w *Kwindow) SetOnSizeChangeCallback(callback glfw.SizeCallback) {
+func (w *kwindow) SetOnSizeChangeCallback(callback glfw.SizeCallback) {
 	w.glfwWindow.SetSizeCallback(callback)
 }
 
-func (w *Kwindow) GetPosition() (x int, y int) {
+func (w *kwindow) GetPosition() (x int, y int) {
 	return w.glfwWindow.GetPos()
 }
 
-func (w *Kwindow) SetPosition(x int, y int) {
+func (w *kwindow) SetPosition(x int, y int) {
 	w.glfwWindow.SetPos(x, y)
 }
 
-func (w *Kwindow) GetSize() (width, height int) {
+func (w *kwindow) GetSize() (width, height int) {
 	return w.width, w.height
 }
 
-func (w *Kwindow) Move(x int, y int) {
+func (w *kwindow) Move(x int, y int) {
 	wX, wY := w.glfwWindow.GetPos()
 	w.glfwWindow.SetPos(wX+x, wY+y)
 }
 
-func (w *Kwindow) HasClosed() bool {
+func (w *kwindow) HasClosed() bool {
 	return w.hasClose
 }
 
-func (w *Kwindow) Close() {
+func (w *kwindow) Close() {
 	if w.hasClose {
 		return
 	}
@@ -299,7 +314,7 @@ func (w *Kwindow) Close() {
 	w.glfwWindow.Destroy()
 }
 
-func (w *Kwindow) GetInput() *KwindowInput {
+func (w *kwindow) GetInput() *KwindowInput {
 	return w.input
 }
 

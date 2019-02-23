@@ -167,7 +167,7 @@ const (
 	KeyLast         Key = Key(glfw.KeyLast)
 )
 
-func newKinput(kwindow *Kwindow) KwindowInput {
+func newKinput(kwindow *kwindow) KwindowInput {
 	ks := make(map[Key]ButtonAction)
 	ks[KeyUnknown] = Release
 	ks[KeySpace] = Release
@@ -388,6 +388,6 @@ func (i *KwindowInput) GetMouseButtonStat(mouseButton MouseButton) ButtonAction 
 }
 
 //GetMousePosition (0,0) at top left, going positively to bottom right
-func (i *KwindowInput) GetMousePosition(mouseButton MouseButton) (x, y float32) {
+func (i *KwindowInput) GetMousePosition() (x, y float32) {
 	return i.mouseX, i.mouseY
 }
