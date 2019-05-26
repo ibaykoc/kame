@@ -35,6 +35,10 @@ func (kwCon KwindowController) LockCursor(lock bool) {
 	kwCon.window.LockCursor(lock)
 }
 
+func (kwCon KwindowController) GetSize() (width, height int) {
+	return kwCon.window.GetSize()
+}
+
 type updateFunc func(timeSinceLastFrame float32)
 type drawFunc func(kwindowDrawer *KwindowDrawer)
 type processInputFunc func(windowInput KwindowInput)

@@ -26,7 +26,7 @@ type Processor interface {
 }
 
 type Drawer interface {
-	// Draw(kdrawer *KDrawer)
+	Draw(kdrawer *KwindowDrawer)
 }
 
 type OnCreateListener interface {

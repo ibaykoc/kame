@@ -35,3 +35,12 @@ func (wdCon KwindowDrawerController) StoreTexturePNG(path string) (KtextureID, e
 	wdCon.kwindowDrawer.ktextures[ktex.id] = ktex
 	return ktex.id, nil
 }
+
+func (wdCon KwindowDrawerController) StoreTextureJPG(path string) (KtextureID, error) {
+	ktex, err := newktextureFromJPG(path)
+	if err != nil {
+		return KtextureID(0), err
+	}
+	wdCon.kwindowDrawer.ktextures[ktex.id] = ktex
+	return ktex.id, nil
+}

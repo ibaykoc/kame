@@ -74,6 +74,47 @@ func (c *kdrawerCamera2D) onWindowSizeChange(newWidth, newHeight float32) {
 	c.windowHeight = newHeight
 }
 
+func (c *kdrawerCamera2D) frustum() Kfrustum {
+	var f Kfrustum
+
+	nearCenter := c.position.Add(c.front.Mul(c.near))
+	farCenter := c.position.Add(c.front.Mul(c.far))
+
+	nearHeight := c.windowHeight / c.pixelPerUnit
+	farHeight := nearHeight
+	nearWidth := nearHeight * c.windowWidth / c.windowHeight
+	farWidth := farHeight * c.windowWidth / c.windowHeight
+
+	nearTopLeft := nearCenter.Add(c.right.Mul(-nearWidth / 2)).Add(c.up.Mul(nearHeight / 2))
+	nearTopRight := nearCenter.Add(c.right.Mul(nearWidth / 2)).Add(c.up.Mul(nearHeight / 2))
+	nearBottomLeft := nearCenter.Add(c.right.Mul(-nearWidth / 2)).Add(c.up.Mul(-nearHeight / 2))
+	nearBottomRight := nearCenter.Add(c.right.Mul(nearWidth / 2)).Add(c.up.Mul(-nearHeight / 2))
+
+	farTopLeft := farCenter.Add(c.right.Mul(-farWidth / 2)).Add(c.up.Mul(farHeight / 2))
+	farTopRight := farCenter.Add(c.right.Mul(farWidth / 2)).Add(c.up.Mul(farHeight / 2))
+	farBottomLeft := farCenter.Add(c.right.Mul(-farWidth / 2)).Add(c.up.Mul(-farHeight / 2))
+	farBottomRight := farCenter.Add(c.right.Mul(farWidth / 2)).Add(c.up.Mul(-farHeight / 2))
+
+	nearRect := Krect{
+		TopLeft:     nearTopLeft,
+		TopRight:    nearTopRight,
+		BottomLeft:  nearBottomLeft,
+		BottomRight: nearBottomRight,
+		Center:      nearCenter,
+	}
+	farRect := Krect{
+		TopLeft:     farTopLeft,
+		TopRight:    farTopRight,
+		BottomLeft:  farBottomLeft,
+		BottomRight: farBottomRight,
+		Center:      farCenter,
+	}
+	f.NearPlane = nearRect
+	f.FarPlane = farRect
+
+	return f
+}
+
 func (c *kdrawerCamera2D) updateFPSControl(windowInput KwindowInput, timeSinceLastFrame float32) {
 	moveSpeed := 0.05 * timeSinceLastFrame
 	c.pixelPerUnit *= (1 + (windowInput.yScroll * 0.1))

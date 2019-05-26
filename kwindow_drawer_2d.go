@@ -10,6 +10,10 @@ type KwindowDrawer2DController struct {
 	kwindowDrawer2D *kwindowDrawer2D
 }
 
+type KdrawerCamera2DController struct {
+	camera *kdrawerCamera2D
+}
+
 func (wdCon KwindowDrawer2DController) StoreMesh(positions []float32, uvs []float32, elements []uint32) (kmeshID, error) {
 	mesh, err := newkmeshPosUV(positions, uvs, elements)
 	if err != nil {
@@ -23,6 +27,16 @@ func (wdCon KwindowDrawer2DController) StoreTintColor(color Kcolor) kcolorID {
 	colID := kcolorID(len(wdCon.kwindowDrawer2D.tintColors))
 	wdCon.kwindowDrawer2D.tintColors[colID] = color
 	return colID
+}
+
+func (wdCon KwindowDrawer2DController) Camera() KdrawerCamera2DController {
+	return KdrawerCamera2DController{
+		camera: wdCon.kwindowDrawer.kdrawerCamera.(*kdrawerCamera2D),
+	}
+}
+
+func (camCon KdrawerCamera2DController) Frustum() Kfrustum {
+	return camCon.camera.frustum()
 }
 
 type kwindowDrawer2D struct {

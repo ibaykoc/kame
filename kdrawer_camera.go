@@ -9,4 +9,5 @@ type kdrawerCamera interface {
 	projectionMatrix() mgl32.Mat4
 	updateFPSControl(windowInput KwindowInput, timeSinceLastFrame float32)
 	onWindowSizeChange(newWidth, newHeight float32)
+	frustum() Kfrustum
 }
