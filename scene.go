@@ -28,12 +28,22 @@ type DrawerSystemsOwner interface {
 	GetDrawerSystemPointers() []*DrawerSystem
 }
 
+type InputProcessorSystemCreator interface {
+	CreateInputProcessorSystems()
+}
+
+type InputProcessorSystemOwner interface {
+	GetInputProcessorSystemPointers() []*InputProcessorSystem
+}
+
 type Scene interface {
 	EntitiesCreator
 	EntitiesOwner
 	EntitiesRemoveListener
-	DrawerSystemsCreator
-	DrawerSystemsOwner
+	InputProcessorSystemCreator
+	InputProcessorSystemOwner
 	ProcessorSystemsCreator
 	ProcessorSystemsOwner
+	DrawerSystemsCreator
+	DrawerSystemsOwner
 }

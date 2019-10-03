@@ -49,6 +49,7 @@ func (wb *kgameWindowBuilder) BuildWith(scenes []Scene) (*KGameWindow, error) {
 	}
 	wb.wb.SetDrawFunc(kgw.draw)
 	wb.wb.SetUpdateFunc(kgw.update)
+	wb.wb.SetProcessInputFunc(kgw.processInput)
 	w, err := newKwindow(*wb.wb)
 	if err != nil {
 		return nil, err

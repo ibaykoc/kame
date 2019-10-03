@@ -138,11 +138,11 @@ func (d *kwindowDrawer2D) draw() {
 							modelMat4Datas = append(modelMat4Datas, tData)
 						}
 					}
+					kmesh.vao.updateModelMat4VBO(modelMat4Datas)
+					kmesh.startDraw()
+					gl.DrawElementsInstanced(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0), totalMeshToDraw)
 					delete(d.batch[kshaderID][kmeshID][ktextureID], tintColorID)
 				}
-				kmesh.vao.updateModelMat4VBO(modelMat4Datas)
-				kmesh.startDraw()
-				gl.DrawElementsInstanced(gl.TRIANGLES, kmesh.elementSize, gl.UNSIGNED_INT, gl.PtrOffset(0), totalMeshToDraw)
 				ktexture.stopDraw()
 				delete(d.batch[kshaderID][kmeshID], ktextureID)
 			}
