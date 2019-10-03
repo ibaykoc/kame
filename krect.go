@@ -9,7 +9,7 @@ type Krect struct {
 }
 
 func (r Krect) GetSize() (width, height float32) {
-	w := r.TopLeft.X() - r.TopRight.X()
+	w := r.TopRight.X() - r.TopLeft.X()
 	h := r.TopLeft.Y() - r.BottomLeft.Y()
 	return w, h
 }
